@@ -17,7 +17,7 @@ git repository.  By itself git-project does almost nothing.  Its functionality
 is enhanced by plugins.
 
 `git-project-core-plugins
-<http://www.github.com/greened/git-project-core-plugins`_ provides a set of
+<http://www.github.com/greened/git-project-core-plugins>`_ provides a set of
 basic functionality and should almost always be installed alongside git-project.
 
 Conventions
