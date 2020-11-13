@@ -270,7 +270,6 @@ class ConfigObject(object):
             value = values.get(item.key, None)
             if value:
                 if issequence(value):
-                    print(f'{item.key} = {value} is a sequence')
                     for v in value:
                         self.add_item(item.key, v)
                 else:
