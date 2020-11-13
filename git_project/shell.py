@@ -20,7 +20,7 @@ import io
 import shlex
 import subprocess
 
-def run_command(command, clargs=None, dry_run=False):
+def run_command(_with_shellcommand, clargs=None, dry_run=False):
     """Run a command.
 
     command: The command to run.
@@ -43,8 +43,7 @@ def run_command(command, clargs=None, dry_run=False):
             if show_commands:
                 print(command)
 
-    cmd_args = shlex.split(command)
-    proc = subprocess.Popen(cmd_args)
+    proc = subprocess.Popen(command, shell=True)
 
     # Wait for it to complete
     proc.communicate()

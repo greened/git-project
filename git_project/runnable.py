@@ -94,4 +94,4 @@ class RunnableConfigObject(ConfigObject):
 
         print(command)
 
-        run_command(command)
+        run_command_with_shell(command)
