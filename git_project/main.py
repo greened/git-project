@@ -29,6 +29,8 @@ def main_impl(args=None):
 
     clargs = git_project.parse_arguments(git, gp, project, plugin_manager, args)
 
+    plugin_manager.initialize_plugins(git, gp, project)
+
     clargs.func(git, gp, project, clargs)
 
 def main(args=None):

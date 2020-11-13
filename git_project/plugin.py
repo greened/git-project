@@ -27,6 +27,21 @@ class Plugin(ABC):
     def __init__(self):
         pass
 
+    def initialize(self, git, gitproject, project, plugin_manager):
+        """Run initialization code for the plugin.
+
+        git: A Git object to examine the repository.
+
+        gitproject: A GitProject object to explore and manipulate the active
+                    project.
+
+        project: The active Project.
+
+        plugin_manager: The active  PluginManager.
+
+        """
+        pass
+
     @abstractmethod
     def add_arguments(self, git, gitproject, project, parser_manager):
         """Add arguments and subparsers for plugins.
