@@ -20,7 +20,7 @@ import io
 import shlex
 import subprocess
 
-def run_command(_with_shellcommand, clargs=None, dry_run=False):
+def run_command_with_shell(command, clargs=None, dry_run=False):
     """Run a command.
 
     command: The command to run.
