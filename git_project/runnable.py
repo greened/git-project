@@ -19,7 +19,7 @@
 from pathlib import Path
 
 from .configobj import ConfigObject
-from .shell import run_command
+from .shell import run_command_with_shell
 
 class RunnableConfigObject(ConfigObject):
     """Base class for objects that use git-config as a backing store and act as
