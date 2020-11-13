@@ -79,6 +79,7 @@ class RunnableConfigObject(ConfigObject):
                 formats[substitution.key] = value
 
         command = command.format(**formats)
+
         return command
 
     def run(self, git, project, clargs):
@@ -90,5 +91,7 @@ class RunnableConfigObject(ConfigObject):
 
         """
         command = self.substitute_command(git, project, clargs)
+
+        print(command)
 
         run_command(command)
