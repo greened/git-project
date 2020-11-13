@@ -40,6 +40,14 @@ class PluginManager(object):
         for plugin in self.iterplugins():
             plugin.add_class_hooks(git, self)
 
+    def initialize_plugins(self, git, gitproject, project):
+        """Run any plugin setup code before invoking the main command routines.  This is
+        called immediately after argument parsing.
+
+        """
+        for plugin in self.iterplugins():
+            plugin.initialize(git, gitproject, project, self)
+
     def iterplugins(self):
         """Iterate over discovered plugins, yielding an instantiated Plugin object."""
         for plugin in self.plugins:
