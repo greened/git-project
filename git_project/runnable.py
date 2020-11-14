@@ -67,16 +67,23 @@ class RunnableConfigObject(ConfigObject):
 
         """
         command = self.command
-        repo_root = self._git.get_repository_root()
-        if self._git.is_bare_repository():
-            repo_root = str(Path(repo_root).parent)
 
-        formats = {'path': repo_root}
+        formats = dict()
 
+        found_path = False
         for substitution in self.substitutions():
             value = getattr(project, substitution.key, None)
             if value is not None:
+                if substitution.key == 'path':
+                    found_path = True
                 formats[substitution.key] = value
+
+        if not found_path:
+            # We haven't found a worktree or other construct to give us a path,
+            # so do a mildly expensive thing to get the path of the curernt
+            # working copy.
+            path = git.get_working_copy_root()
+            formats['path'] = path
 
         command = command.format(**formats)
 

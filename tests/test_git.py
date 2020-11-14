@@ -168,14 +168,14 @@ def test_worktree(reset_directory, local_repository):
 
     assert not os.path.exists(worktree_path)
 
-def test_get_repository_root(reset_directory, local_repository):
+def test_get_working_copy_root(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
 
     assert git.has_repo()
 
-    assert Path(git.get_repository_root()) == (Path(git._repo.path) / '..').resolve()
+    assert Path(git.get_working_copy_root()) == (Path(git._repo.path) / '..').resolve()
 
 def test_get_current_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
