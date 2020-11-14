@@ -288,12 +288,30 @@ class Git(object):
         """Return whether the configured repository is bare."""
         return self._repo.is_bare
 
-    # Return the top-level directory of this worktree.
-    def get_repository_root(self):
-        """Get the root working directory of the current repository."""
-        if self.is_bare_repository():
-            return self._repo.path
-        return str((Path(self._repo.path) / '..').resolve())
+    def get_working_copy_root(self):
+        """Get the root of the current working copy."""
+        cwd = Path.cwd().resolve()
+
+        # See if this is a worktree.
+        for name in self._repo.list_worktrees():
+            worktree = self._repo.lookup_worktree(name)
+            path = Path(worktree.path).resolve()
+            if path == cwd or cwd.is_relative_to(path):
+                return str(path)
+
+        # See if we have a GITDIR somewhere along the way.
+        gitdir = Path(self._repo.path).resolve()
+        while True:
+            if gitdir != cwd and gitdir.is_relative_to(cwd):
+                return cwd
+            parent = cwd.parent
+            if parent == cwd:
+                break
+            cwd = parent
+
+        # We didn't find a matching worktree or a gitdir relative to the current
+        # path.  Gibe up.
+        return None
 
     def get_current_refname(self):
         """Get the refname of HEAD."""
