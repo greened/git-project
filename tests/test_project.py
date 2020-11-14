@@ -145,7 +145,7 @@ def test_prune_branch(reset_directory, remote_repository, tmp_path_factory):
 
     os.chdir(remotedir)
 
-    git_project.Git.capture_command(f'git clone --mirror {remote_repository.path}')
+    git_project.capture_command(f'git clone --mirror {remote_repository.path}')
 
     print(f'remote.path: {remote_repository.path}')
 
