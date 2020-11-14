@@ -303,7 +303,7 @@ def init_local_remote(remote_path, clone_path):
     origin.fetch()
 
     for branch_name in local_clone.branches.remote:
-        if branch_name == 'origin/master':
+        if branch_name == 'origin/master' or branch_name == 'origin/HEAD':
             continue
         branch = local_clone.branches.get(branch_name)
         commit = local_clone.revparse_single(branch.branch_name)
