@@ -392,7 +392,7 @@ class GitProjectRunner(object):
     def run(self, expected_stdout, expected_stderr, *args):
         os.chdir(self.directory)
         result = self.runner.run(self.command, *args)
-        assert result.successx
+        assert result.success
         assert result.stdout == expected_stdout
         assert result.stderr == expected_stderr
 
