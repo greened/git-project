@@ -24,6 +24,7 @@ from pathlib import Path
 import pygit2
 import pytest
 import pytest_console_scripts
+import re
 
 class ParserManagerMock(object):
     class ParserMock(object):
@@ -389,14 +390,18 @@ class GitProjectRunner(object):
         self.runner = runner
         self.directory = directory
 
-    def run(self, expected_stdout, expected_stderr, *args):
+    def run(self, expected_stdout_regexp, expected_stderr_regexp, *args):
         os.chdir(self.directory)
         result = self.runner.run(self.command, *args)
         assert result.success
-        assert result.stdout == expected_stdout
-        assert result.stderr == expected_stderr
+
+        stdout_re = re.compile(expected_stdout_regexp)
+        stderr_re = re.compile(expected_stderr_regexp)
+
+        assert stdout_re.match(result.stdout)
+        assert stderr_re.match(result.stderr)
 
 @pytest.fixture(scope="function")
-def git_project_runner(script_runner):
+def git_project_runner(reset_directory, script_runner):
     result = GitProjectRunner(script_runner, Path.cwd())
     return result
