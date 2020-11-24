@@ -132,6 +132,9 @@ class ConfigObject(object):
         ident: The name of this specific ConfigObject.
 
         """
+        if not git.has_repo():
+            return False
+
         gitsection = ConfigObject._get_full_section(project_section,
                                                     subsection,
                                                     ident)
