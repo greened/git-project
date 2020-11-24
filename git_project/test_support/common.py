@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 import pygit2
 import pytest
+import pytest_console_scripts
 
 class ParserManagerMock(object):
     class ParserMock(object):
@@ -381,3 +382,21 @@ def parser_manager(request, gitproject, project):
 @pytest.fixture(scope="function")
 def plugin_manager(request):
     return git_project.PluginManager()
+
+class GitProjectRunner(object):
+    def __init__(self, runner, directory):
+        self.command = 'git-project'
+        self.runner = runner
+        self.directory = directory
+
+    def run(self, expected_stdout, expected_stderr, *args):
+        os.chdir(self.directory)
+        result = self.runner.run(self.command, *args)
+        assert result.successx
+        assert result.stdout == expected_stdout
+        assert result.stderr == expected_stderr
+
+@pytest.fixture(scope="function")
+def git_project_runner(script_runner):
+    result = GitProjectRunner(script_runner, Path.cwd())
+    return result
