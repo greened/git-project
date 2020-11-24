@@ -391,8 +391,8 @@ class GitProjectRunner(object):
         self.directory = directory
 
     def run(self, expected_stdout_regexp, expected_stderr_regexp, *args):
-        os.chdir(self.directory)
-        result = self.runner.run(self.command, *args)
+        result = self.runner.run(self.command, *args, cwd=self.directory)
+
         assert result.success
 
         stdout_re = re.compile(expected_stdout_regexp)
