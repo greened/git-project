@@ -25,6 +25,7 @@ from .common import reset_directory
 from .common import parser_manager
 from .common import plugin_manager
 from .common import git
+from .common import bare_git
 from .common import gitproject
 from .common import git_project_runner
 from .common import project

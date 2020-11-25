@@ -361,6 +361,11 @@ def git(request, local_repository):
     return git_project.Git()
 
 @pytest.fixture(scope="function")
+def bare_git(request, remote_repository):
+    os.chdir(remote_repository.path)
+    return git_project.Git()
+
+@pytest.fixture(scope="function")
 def gitproject(request, git):
     return git_project.GitProject.get(git)
 
