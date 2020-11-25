@@ -533,3 +533,31 @@ def test_detach_head_bare(reset_directory,
     bare_git.detach_head()
     assert bare_git.head_is_detached()
 
+def test_get_remote_fetch_refspecs(reset_directory,
+                                   git):
+    refspecs = git.get_remote_fetch_refspecs('origin')
+    # Why this is duplicated is not clear...
+    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
+                        '+refs/heads/*:refs/remotes/origin/*']
+
+def test_set_remote_fetch_refspecs(reset_directory,
+                                   git):
+    refspecs = git.get_remote_fetch_refspecs('origin')
+    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
+                        '+refs/heads/*:refs/remotes/origin/*']
+
+    new_refspecs = ['+refs/heads/*:refs/remotes/origin/changed/*']
+    git.set_remote_fetch_refspecs('origin',new_refspecs)
+
+    refspecs = git.get_remote_fetch_refspecs('origin')
+    assert refspecs == new_refspecs
+
+def test_fetch_remote(reset_directory,
+                      git):
+    new_refspecs = ['+refs/heads/*:refs/remotes/origin/changed/*']
+    git.set_remote_fetch_refspecs('origin', new_refspecs)
+
+    git.fetch_remote('origin')
+
+    refs = [ref for ref in git.iterrefnames(['refs/remotes/origin/changed'])]
+    assert len(refs) > 0
