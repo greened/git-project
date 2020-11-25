@@ -358,6 +358,22 @@ class Git(object):
         descendant_oid = self._repo.revparse_single(descendant).id
         return self._repo.descendant_of(descendant_oid, committish_oid)
 
+    # Operations on remotes
+
+    def set_remote_fetch_refspecs(self, remote, refspecs):
+        """Set the refspec list for the given remote to refspecs."""
+        self.config.rm_items(f'remote.{remote}', 'fetch')
+        for refspec in refspecs:
+            self._repo.remotes.add_fetch(remote, refspec)
+
+    def get_remote_fetch_refspecs(self, remote):
+        """Get the list of refspecs for the given remote."""
+        return self._repo.remotes[remote].fetch_refspecs
+
+    def fetch_remote(self, remote, callbacks=None):
+        """Fetch all refspecs from the given remote."""
+        self._repo.remotes[remote].fetch(callbacks=callbacks)
+
     # Info on refs.
 
     @staticmethod
