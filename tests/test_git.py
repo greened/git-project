@@ -246,6 +246,16 @@ def test_refname_to_branch_name(reset_directory, local_repository):
     assert git.refname_to_branch_name('refs/heads/master') == 'master'
     assert git.refname_to_branch_name('master') == 'master'
 
+def test_refname_to_branch_name_remote(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    assert git.refname_to_branch_name('refs/remotes/origin/master') == 'origin/master'
+    assert git.refname_to_branch_name('origin/master') == 'origin/master'
+
 def test_branch_name_to_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
