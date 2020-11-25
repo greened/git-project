@@ -473,6 +473,11 @@ class Git(object):
                 if refname.startswith(pattern):
                     yield refname
 
+    def iterbranches(self):
+        """Iterate over all of the repository's branches."""
+        for branch in self._repo.branches:
+            yield branch
+
     # Higher-level commands.
 
     def detach_head(self):
