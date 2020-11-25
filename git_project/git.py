@@ -148,7 +148,10 @@ class Git(object):
                 """Remove all values for the given key."""
                 del self._items[self.itemname(key)]
                 # No pygit2 interface for this.
+                prev_dir = Path.cwd()
+                os.chdir(self._git._repo.path)
                 capture_command(f'git config --unset-all {self.itemname(key)}')
+                os.chdir(prev_dir)
 
             def rm_item(self, key, pattern):
                 """Remove all values matching pattern from the given key."""
@@ -160,7 +163,10 @@ class Git(object):
                     del self._items[self.itemname(key)]
 
                 # No pygit2 interface for this.
+                prev_dir = Path.cwd()
+                os.chdir(self._git._repo.path)
                 capture_command(f'git config --unset {self.itemname(key)} {pattern}')
+                os.chdir(prev_dir)
 
             # No pygit2 interface for this.
             def rm(self):

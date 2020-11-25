@@ -81,6 +81,7 @@ def capture_command(command,
             print(command)
 
         cmd_args = shlex.split(command)
+        print(f'Running {cmd_args}')
         proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
 
