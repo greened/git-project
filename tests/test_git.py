@@ -120,6 +120,50 @@ def test_config(reset_directory, local_repository):
     config.rm_section('test')
     assert check_lines('test', 'one', '1', section_present=False, key_present=False)
 
+    config.set_item('testrm', 'one', '1')
+    values = [item for item in config.iter_multival('testrm', 'one')]
+    assert values == ['1']
+
+    config.rm_item('testrm', 'one', '.*')
+    assert check_lines('testrm', 'one', '1', section_present=False, key_present=False)
+
+    config.set_item('testrm2', 'one', '1')
+    values = [item for item in config.iter_multival('testrm2', 'one')]
+    assert values == ['1']
+
+    # Make sure we still delete things if we're not in the git repository.
+    prev_dir = Path.cwd()
+    os.chdir(Path.cwd().parent.parent)
+    new_dir = Path.cwd()
+    config.rm_item('testrm2', 'one', '.*')
+    assert Path.cwd() == new_dir
+    os.chdir(prev_dir)
+    assert check_lines('testrm2', 'one', '1', section_present=False, key_present=False)
+
+    config.set_item('testrm3', 'one', '1')
+    config.add_item('testrm3', 'one', '2')
+    values = [item for item in config.iter_multival('testrm3', 'one')]
+    assert {value for value in values} == {'1', '2'}
+
+    config.rm_items('testrm3', 'one')
+    assert check_lines('testrm3', 'one', '1', section_present=False, key_present=False)
+    assert check_lines('testrm3', 'one', '2', section_present=False, key_present=False)
+
+    config.set_item('testrm4', 'one', '1')
+    config.add_item('testrm4', 'one', '2')
+    values = [item for item in config.iter_multival('testrm4', 'one')]
+    assert {value for value in values} == {'1', '2'}
+
+    # Make sure we still delete things if we're not in the git repository.
+    prev_dir = Path.cwd()
+    os.chdir(Path.cwd().parent.parent)
+    new_dir = Path.cwd()
+    config.rm_items('testrm4', 'one')
+    assert Path.cwd() == new_dir
+    os.chdir(prev_dir)
+    assert check_lines('testrm4', 'one', '1', section_present=False, key_present=False)
+    assert check_lines('testrm4', 'one', '2', section_present=False, key_present=False)
+
 def test_is_bare_repository(reset_directory,
                             remote_repository,
                             local_repository):
