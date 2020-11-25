@@ -385,6 +385,9 @@ class Git(object):
         prefix = 'refs/heads/'
         if refname.startswith(prefix):
             return refname[len(prefix):]
+        prefix = 'refs/remotes/'
+        if refname.startswith(prefix):
+            return refname[len(prefix):]
         return refname
 
     @staticmethod
