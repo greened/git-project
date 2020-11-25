@@ -522,3 +522,14 @@ def test_delete_remote_refname(reset_directory,
 
     assert not remote_git.committish_exists('todelete')
     assert not remote_git.committish_exists('refs/heads/todelete')
+
+def test_detach_head(reset_directory,
+                     git):
+    git.detach_head()
+    assert git.head_is_detached()
+
+def test_detach_head_bare(reset_directory,
+                          bare_git):
+    bare_git.detach_head()
+    assert bare_git.head_is_detached()
+

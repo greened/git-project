@@ -459,6 +459,17 @@ class Git(object):
 
     # Higher-level commands.
 
+    def detach_head(self):
+        """Cause HEAD to be detached."""
+        head_ref = self.get_committish_commit('HEAD')
+        if not self.is_bare_repository():
+            self._repo.checkout_tree(head_ref)
+        self._repo.set_head(head_ref.id)
+
+    def head_is_detached(self):
+        """Return whether HEAD is detched."""
+        return self._repo.head_is_detached
+
     def create_branch(self, branch_name, committish):
         """Create a branch with the given name pointing to committish."""
         commit = self.get_committish_commit(committish)
