@@ -465,12 +465,13 @@ class Git(object):
         branch_name = self.refname_to_branch_name(branch_name)
         self._repo.branches.create(branch_name, commit)
 
-    def clone (self, url, bare=False, callbacks=None):
+    def clone (self, url, path=None, bare=False, callbacks=None):
         """Clone a respository at the given url, making a bare clone if specified."""
         parsed_url = urllib.parse.urlparse(url)
-        path = Path(parsed_url.path).resolve()
-        name = path.name
-        target_path = str(Path.cwd() / name)
+        url_path = Path(parsed_url.path).resolve()
+        url_name = url_path.name
+        target_path = path if path else str(Path.cwd() / url_name)
+
         self._repo = pygit2.clone_repository(url, target_path, bare, callbacks=callbacks)
         self._config = self.Config(self, self._repo.config)
 
