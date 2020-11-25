@@ -146,8 +146,9 @@ class Git(object):
 
             def rm_items(self, key):
                 """Remove all values for the given key."""
-                del self._git._repo.config[self.itemname(key)]
                 del self._items[self.itemname(key)]
+                # No pygit2 interface for this.
+                capture_command(f'git config --unset-all {self.itemname(key)}')
 
             def rm_item(self, key, pattern):
                 """Remove all values matching pattern from the given key."""
