@@ -561,6 +561,7 @@ class Git(object):
     def delete_branch(self, branch_name):
         """Delete the named branch."""
         # TODO: Check that it's actually a branch.
+        branch_name = self.refname_to_branch_name(branch_name)
         self._repo.branches.delete(branch_name)
 
     def remote_branch_exists(self, branch_name, remote):

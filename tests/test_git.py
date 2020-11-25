@@ -466,7 +466,7 @@ def test_update_symbolic_ref(reset_directory, local_repository):
     assert (git.get_committish_oid('HEAD') ==
             git.get_committish_oid('master'))
 
-def test_delete_refname(reset_directory, local_repository):
+def test_delete_branch(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -477,6 +477,21 @@ def test_delete_refname(reset_directory, local_repository):
     assert git.committish_exists('refs/heads/todelete')
 
     git.delete_branch('todelete')
+
+    assert not git.committish_exists('todelete')
+    assert not git.committish_exists('refs/heads/todelete')
+
+def test_delete_refname(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    git.create_branch('todelete', 'HEAD')
+
+    assert git.committish_exists('todelete')
+    assert git.committish_exists('refs/heads/todelete')
+
+    git.delete_branch('refs/heads/todelete')
 
     assert not git.committish_exists('todelete')
     assert not git.committish_exists('refs/heads/todelete')
