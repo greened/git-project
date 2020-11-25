@@ -36,7 +36,7 @@ class Git(object):
     class Config(object):
         """Manage the git config for the current repository."""
         class ConfigSection(object):
-            """Managee a specific section of the git config."""
+            """Manage a specific section of the git config."""
             class ConfigItem(object):
                 """Represent a key:value (multi-)pair."""
                 def __init__(self, key):
@@ -498,7 +498,7 @@ class Git(object):
         branch_name = self.refname_to_branch_name(branch_name)
         self._repo.branches.create(branch_name, commit)
 
-    def clone (self, url, path=None, bare=False, callbacks=None):
+    def clone(self, url, path=None, bare=False, callbacks=None):
         """Clone a respository at the given url, making a bare clone if specified."""
         parsed_url = urllib.parse.urlparse(url)
         url_path = Path(parsed_url.path).resolve()
