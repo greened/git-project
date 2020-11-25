@@ -362,6 +362,9 @@ class Git(object):
 
     def set_remote_fetch_refspecs(self, remote, refspecs):
         """Set the refspec list for the given remote to refspecs."""
+        if isinstance(refspecs, str):
+            refspecs = [refspecs]
+
         self.config.rm_items(f'remote.{remote}', 'fetch')
         for refspec in refspecs:
             self._repo.remotes.add_fetch(remote, refspec)
@@ -468,6 +471,9 @@ class Git(object):
 
     def iterrefnames(self, patterns):
         """Iterate over all of the refnames matching the given pattern."""
+        if isinstance(patterns, str):
+            patterns = [patterns]
+
         for refname in self._repo.references:
             for pattern in patterns:
                 if refname.startswith(pattern):
