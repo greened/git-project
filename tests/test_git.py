@@ -338,6 +338,21 @@ def test_iterrefnames(reset_directory, local_repository):
              'refs/heads/pushed',
              'refs/heads/unmerged'])
 
+def test_iterrefnames_str(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    refnamelist = [refname for refname in git.iterrefnames('refs/heads/')]
+
+    assert (refnamelist  ==
+            ['refs/heads/master',
+             'refs/heads/merged_local',
+             'refs/heads/merged_remote',
+             'refs/heads/notpushed',
+             'refs/heads/pushed',
+             'refs/heads/unmerged'])
+
 def test_create_branch(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
@@ -551,6 +566,17 @@ def test_set_remote_fetch_refspecs(reset_directory,
 
     refspecs = git.get_remote_fetch_refspecs('origin')
     assert refspecs == new_refspecs
+
+def test_set_remote_fetch_refspecs_str(reset_directory, git):
+    refspecs = git.get_remote_fetch_refspecs('origin')
+    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
+                        '+refs/heads/*:refs/remotes/origin/*']
+
+    new_refspecs = '+refs/heads/*:refs/remotes/origin/changed/*'
+    git.set_remote_fetch_refspecs('origin',new_refspecs)
+
+    refspecs = git.get_remote_fetch_refspecs('origin')
+    assert refspecs == [new_refspecs]
 
 def test_fetch_remote(reset_directory,
                       git):
