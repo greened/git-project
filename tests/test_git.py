@@ -561,3 +561,16 @@ def test_fetch_remote(reset_directory,
 
     refs = [ref for ref in git.iterrefnames(['refs/remotes/origin/changed'])]
     assert len(refs) > 0
+
+def test_iterbranches(reset_directory, git):
+    branches = [branch for branch in git.iterbranches()]
+    assert branches == ['master',
+                        'merged_local',
+                        'merged_remote',
+                        'notpushed',
+                        'pushed',
+                        'unmerged',
+                        'origin/HEAD',
+                        'origin/master',
+                        'origin/notpushed',
+                        'origin/pushed']
