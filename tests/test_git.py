@@ -615,3 +615,22 @@ def test_iterbranches(reset_directory, git):
                         'origin/master',
                         'origin/notpushed',
                         'origin/pushed']
+
+def test_get_branch_upstream(reset_directory, git):
+    master_upstream = git.get_branch_upstream('master')
+    assert master_upstream == 'origin/master'
+
+def test_get_branch_upstream_refname(reset_directory, git):
+    master_upstream = git.get_branch_upstream('refs/heads/master')
+    assert master_upstream == 'origin/master'
+
+def test_set_branch_upstream(reset_directory, git):
+    assert git.get_branch_upstream('master') == 'origin/master'
+
+    git.set_branch_upstream('master', None)
+
+    assert not git.get_branch_upstream('master')
+
+    git.set_branch_upstream('master', 'origin/master')
+
+    assert git.get_branch_upstream('master') == 'origin/master'

@@ -504,6 +504,28 @@ class Git(object):
         branch_name = self.refname_to_branch_name(branch_name)
         self._repo.branches.create(branch_name, commit)
 
+    def set_branch_upstream(self, branch_name, remote_branch_name):
+        """Set the upstream of branch_name to remote_branch_name."""
+        branch_name = self.refname_to_branch_name(branch_name)
+        if remote_branch_name:
+            remote_branch_name = self.refname_to_branch_name(remote_branch_name)
+
+        branch = self._repo.branches[branch_name]
+
+        remote_branch = None
+        if remote_branch_name:
+            remote_branch = self._repo.branches[remote_branch_name]
+
+        branch.upstream = remote_branch
+
+    def get_branch_upstream(self, branch_name):
+        branch_name = self.refname_to_branch_name(branch_name)
+        branch = self._repo.branches[branch_name]
+        result = None
+        if branch.upstream:
+            result = branch.upstream.branch_name
+        return result
+
     def clone(self, url, path=None, bare=False, callbacks=None):
         """Clone a respository at the given url, making a bare clone if specified."""
         parsed_url = urllib.parse.urlparse(url)
