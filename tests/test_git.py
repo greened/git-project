@@ -387,6 +387,25 @@ def test_clone(reset_directory, remote_repository, tmp_path_factory):
     assert git.has_repo()
     assert git.is_bare_repository()
 
+def test_clone_with_path(reset_directory, remote_repository, tmp_path_factory):
+    path = tmp_path_factory.mktemp('clone-workdir')
+    os.chdir(path)
+
+    git = git_project.Git()
+
+    remote_url = 'file://' + remote_repository.path
+
+    path = Path.cwd() / 'foo' / 'bar'
+
+    os.makedirs(path)
+
+    path = path / 'test-clone'
+
+    clone_path = git.clone(remote_url, path)
+
+    assert os.path.exists(clone_path)
+    assert clone_path == str(path)
+
 def test_checkout(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
