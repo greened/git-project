@@ -18,6 +18,7 @@
 
 import os
 from pathlib import Path
+import progressbar
 import pygit2
 import re
 import shlex
@@ -32,6 +33,59 @@ from .shell import capture_command
 class Git(object):
     """A facade over a lower-level interface to git providing interfaces needed to
     implement git-project functionality."""
+
+    class RemoteCallbacks(pygit2.RemoteCallbacks):
+        def __init__(self):
+            self.progress = progressbar.ProgressBar()
+
+            self.started_transfer = False
+            self.transfer_done = False
+
+            self.started_deltas = False
+            self.deltas_done = False
+
+            self.null_oid = pygit2.Oid(hex='0000000000000000000000000000000000000000')
+
+        def credentials(self, url, username_from_url, allowed_types):
+            if allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY:
+                return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
+                                      str(Path.home() / '.ssh' / 'id_rsa'), '')
+            elif allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERNAME:
+                return pygit2.Username(username_from_url)
+            return None
+
+        def sideband_progress(self, message):
+            print(f'Remote: {message}')
+
+        def transfer_progress(self, stats):
+            if not self.started_transfer:
+                self.started_transfer = True
+                print(f'Receiving objects ({stats.total_objects})...')
+                self.progress.start(stats.total_objects)
+
+            if not self.transfer_done:
+                self.progress.update(stats.received_objects)
+                if stats.received_objects >= stats.total_objects:
+                    self.progress.finish()
+                    self.transfer_done = True
+
+            if stats.total_deltas > 0 and not self.started_deltas:
+                self.started_deltas = True
+                print(f'Resolving deltas ({stats.total_deltas})...')
+                self.progress.start(stats.total_deltas)
+
+            if self.started_deltas and not self.deltas_done:
+                self.progress.update(stats.indexed_deltas)
+                if stats.indexed_deltas >= stats.total_deltas:
+                    self.progress.finish()
+                    self.deltas_done = True
+                    print('')
+
+        def update_tips(self, refname, old, new):
+            if old != self.null_oid:
+                print(f'{refname} {str(old)} -> {str(new)}')
+            else:
+                print(f'{refname} -> {str(new)}')
 
     class Config(object):
         """Manage the git config for the current repository."""
@@ -261,6 +315,14 @@ class Git(object):
 
     class RemoteBranchDeleteCallback(pygit2.RemoteCallbacks):
         """Check the result of remove branch prune operations."""
+        def credentials(self, url, username_from_url, allowed_types):
+            if allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY:
+                return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
+                                      str(Path.home() / '.ssh' / 'id_rsa'), '')
+            elif allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERNAME:
+                return pygit2.Username(username_from_url)
+            return None
+
         def push_update_reference(self, refname, message):
             if message is not None:
                 raise GitProjectException('Could not prune remote branch: {}'.
@@ -379,8 +441,9 @@ class Git(object):
         """Get the list of refspecs for the given remote."""
         return self._repo.remotes[remote].fetch_refspecs
 
-    def fetch_remote(self, remote, callbacks=None):
+    def fetch_remote(self, remote):
         """Fetch all refspecs from the given remote."""
+        callbacks = Git.RemoteCallbacks()
         self._repo.remotes[remote].fetch(callbacks=callbacks)
 
     # Info on refs.
@@ -535,13 +598,14 @@ class Git(object):
             result = branch.upstream.branch_name
         return result
 
-    def clone(self, url, path=None, bare=False, callbacks=None):
+    def clone(self, url, path=None, bare=False):
         """Clone a respository at the given url, making a bare clone if specified."""
         parsed_url = urllib.parse.urlparse(url)
         url_path = Path(parsed_url.path).resolve()
         url_name = url_path.name
         target_path = path if path else str(Path.cwd() / url_name)
 
+        callbacks = Git.RemoteCallbacks()
         self._repo = pygit2.clone_repository(url, target_path, bare, callbacks=callbacks)
         self._config = self.Config(self, self._repo.config)
 
