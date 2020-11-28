@@ -101,6 +101,54 @@ def test_get_with_kwargs(reset_directory, git):
     assert thing.first == 'newfirst'
     assert thing.second == 'seconddefault'
 
+def test_get_user_attribute(reset_directory, git):
+    thing = MyThing.get(git, 'project', 'test')
+
+    assert thing.first == 'firstdefault'
+    assert thing.second == 'seconddefault'
+    assert not hasattr(thing, 'third')
+
+    thing.third = "thirddefault"
+
+    newthing = MyThing.get(git, 'project', 'test')
+
+    assert newthing.first == 'firstdefault'
+    assert newthing.second == 'seconddefault'
+    assert newthing.third == 'thirddefault'
+
+    newthing.third = "newthird"
+
+    anotherthing = MyThing.get(git, 'project', 'test')
+
+    assert anotherthing.first == 'firstdefault'
+    assert anotherthing.second == 'seconddefault'
+    assert anotherthing.third == 'newthird'
+
+    del newthing.third
+
+def test_del_user_attribute(reset_directory, git):
+    thing = MyThing.get(git, 'project', 'test')
+
+    assert thing.first == 'firstdefault'
+    assert thing.second == 'seconddefault'
+    assert not hasattr(thing, 'third')
+
+    thing.third = "thirddefault"
+
+    newthing = MyThing.get(git, 'project', 'test')
+
+    assert newthing.first == 'firstdefault'
+    assert newthing.second == 'seconddefault'
+    assert newthing.third == 'thirddefault'
+
+    del newthing.third
+
+    oldthing = MyThing.get(git, 'project', 'test')
+
+    assert oldthing.first == 'firstdefault'
+    assert oldthing.second == 'seconddefault'
+    assert not hasattr(oldthing, 'third')
+
 def test_multival(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 

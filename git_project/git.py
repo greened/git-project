@@ -150,6 +150,9 @@ class Git(object):
                 """Return the name of this section."""
                 return self._name
 
+            def __iter__(self):
+                yield from self._items.items()
+
             def itemname(self, key):
                 """Return the full name of a key, including the section."""
                 return self.name + '.' + key

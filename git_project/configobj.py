@@ -60,6 +60,21 @@ class ConfigObject(object):
         self._set_defaults(configitems)
         self._init_from_dict(configitems, kwargs)
 
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            super().__setattr__(name, value)
+            return
+
+        # The git config can only handle string values.
+        assert(isinstance(value, str))
+        self.set_item(name, value)
+
+    def __delattr__(self, name):
+        if name.startswith('_'):
+            super().__delattr__(name)
+            return
+        self.rm_items(name)
+
     @classmethod
     def get(cls,
             git,
@@ -94,12 +109,12 @@ class ConfigObject(object):
         if git.has_repo():
             config_section = git.config.get_section(gitsection)
             if config_section:
-                for item in configitems:
-                    values = [value for value in config_section.iter_multival(item.key)]
-                    if len(values) == 1:
-                        values = values[0]
-                    if values:
-                        inits[item.key] = values
+                for key, item in config_section:
+                    name = key.rsplit('.', 1)[-1]
+                    if item.is_multival:
+                        inits[name] = item.get_value()
+                    else:
+                        inits[name] = [value for value in item.itervalues()]
 
         for key, value in kwargs.items():
             inits[key] = value
@@ -269,14 +284,12 @@ class ConfigObject(object):
                 return False
             return isinstance(obj, collections.abc.Sequence)
 
-        for item in configitems:
-            value = values.get(item.key, None)
-            if value:
-                if issequence(value):
-                    for v in value:
-                        self.add_item(item.key, v)
-                else:
-                    self.set_item(item.key, value)
+        for key, value in values.items():
+            if issequence(value):
+                for v in value:
+                    self.add_item(key, v)
+            else:
+                self.set_item(key, value)
 
     def _set_defaults(self, configitems):
         """Query the derived class for default values of properties and set them."""
