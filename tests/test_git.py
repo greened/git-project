@@ -688,3 +688,6 @@ def test_set_branch_upstream(reset_directory, git):
     git.set_branch_upstream('master', 'origin/master')
 
     assert git.get_branch_upstream('master') == 'origin/master'
+
+def test_get_curent_branch(reset_directory, git):
+    assert git.get_current_branch() == 'master'

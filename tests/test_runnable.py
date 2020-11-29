@@ -40,7 +40,7 @@ class MyRunnable(git_project.RunnableConfigObject):
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
         configitems = [git_project.ConfigObjectItem('command',
-                                                    'cd {builddir} && make {target}',
+                                                    'cd {builddir}/{branch} && make {target}',
                                                     "Test command")]
 
         return super().get(git,
@@ -60,7 +60,7 @@ class MyRunnable(git_project.RunnableConfigObject):
 def test_get(reset_directory, git):
     runnable = MyRunnable.get(git, 'project', 'test')
 
-    assert runnable.command == 'cd {builddir} && make {target}'
+    assert runnable.command == 'cd {builddir}/{branch} && make {target}'
 
 def test_substitute_command(reset_directory, git):
     class MyProject(object):
@@ -77,4 +77,4 @@ def test_substitute_command(reset_directory, git):
 
     command = runnable.substitute_command(git, project, clargs)
 
-    assert command == f'cd {project.builddir} && make {project.target}'
+    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.target}'

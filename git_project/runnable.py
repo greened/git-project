@@ -85,6 +85,8 @@ class RunnableConfigObject(ConfigObject):
             path = git.get_working_copy_root()
             formats['path'] = path
 
+        formats['branch'] = git.get_current_branch()
+
         command = command.format(**formats)
 
         return command
