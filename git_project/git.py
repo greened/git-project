@@ -594,6 +594,7 @@ class Git(object):
         branch.upstream = remote_branch
 
     def get_branch_upstream(self, branch_name):
+        """Get the upstream branch of the given local branch."""
         branch_name = self.refname_to_branch_name(branch_name)
         branch = self._repo.branches[branch_name]
         result = None
