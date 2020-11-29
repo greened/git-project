@@ -579,6 +579,12 @@ class Git(object):
         branch_name = self.refname_to_branch_name(branch_name)
         self._repo.branches.create(branch_name, commit)
 
+    def get_current_branch(self):
+        """Get the currently-checked-out branch."""
+        if self.head_is_detached():
+            return None
+        return self.refname_to_branch_name(self.get_current_refname())
+
     def set_branch_upstream(self, branch_name, remote_branch_name):
         """Set the upstream of branch_name to remote_branch_name."""
         branch_name = self.refname_to_branch_name(branch_name)
