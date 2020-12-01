@@ -18,6 +18,7 @@
 
 import inspect
 import os
+import re
 
 import git_project
 from pathlib import Path
@@ -217,3 +218,22 @@ def test_get_multi(reset_directory, git):
 
     assert result == [('first', 'firstdefault'),
                       ('second', {'seconddefault', 'secondsecond'})]
+
+def test_get_no_dup(reset_directory, git):
+    thing = MyThing.get(git, 'project', 'test')
+
+    thing.first = 'firstdefault'
+    thing.second = 'seconddefault'
+
+    thing.add_item('second', 'secondsecond')
+    thing.add_item('second', 'secondthird')
+
+    newthing  = MyThing.get(git, 'project', 'test')
+
+    with open('config') as conffile:
+        count = 0
+        pattern = re.compile('^\s*second = .*')
+        for line in conffile:
+            if pattern.match(line):
+                count = count + 1
+        assert count == 3
