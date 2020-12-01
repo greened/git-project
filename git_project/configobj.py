@@ -100,10 +100,10 @@ class ConfigObject(object):
             if config_section:
                 for key, item in config_section:
                     name = key.rsplit('.', 1)[-1]
-                    if item.is_multival:
-                        inits[name] = item.get_value()
-                    else:
+                    if item.is_multival():
                         inits[name] = [value for value in item.itervalues()]
+                    else:
+                        inits[name] = item.get_value()
 
         for key, value in kwargs.items():
             inits[key] = value
