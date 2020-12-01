@@ -147,3 +147,33 @@ def test_iteritems(reset_directory, git):
     assert result == {('name', 'parent'),
                       ('value', 'ParentScope'),
                       ('parentonly', 'ParentOnly')}
+
+def test_iteritems_multi(reset_directory, git):
+    parent = ParentScope.get(git, 'project', 'parent')
+
+    child = ChildScope.get(git, 'project', 'child')
+
+    child.add_item('value', 'second')
+
+    result = {(key, item) for key,item in parent.iteritems()}
+
+    assert result == {('name', 'parent'),
+                      ('value', 'ParentScope'),
+                      ('parentonly', 'ParentOnly')}
+
+    parent.push_scope(child)
+
+    result = {(key, item) for key,item in parent.iteritems()}
+
+    assert result == {('name', 'child'),
+                      ('value', frozenset(['ChildScope', 'second'])),
+                      ('parentonly', 'ParentOnly'),
+                      ('childonly', 'ChildOnly')}
+
+    parent.pop_scope()
+
+    result = {(key, item) for key,item in parent.iteritems()}
+
+    assert result == {('name', 'parent'),
+                      ('value', 'ParentScope'),
+                      ('parentonly', 'ParentOnly')}

@@ -171,12 +171,12 @@ class ConfigObject(object):
         """Add a property name that reads the git config when accessed and writes the
         git config when written."""
         def fun_get(self):
-            result = [item for item in self.iter_multival(name)]
+            result = {item for item in self.iter_multival(name)}
             if not result:
                 return None
             if len(result) == 1:
-                result = result[0]
-            return result
+                return result.pop()
+            return frozenset(result)
         def fun_set(self, value):
             self._set_item(name, value)
         prop = property(fun_get, fun_set)
@@ -278,5 +278,6 @@ class ConfigObject(object):
     def iteritems(self):
         """Iterate over all key, value items."""
         for key, value in inspect.getmembers(self):
+            print(f'iteritems check {key} -> {value}')
             if self.has_item(key):
                 yield key, value
