@@ -16,6 +16,8 @@
 # this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+import inspect
+
 from .configobj import ConfigObject
 
 class ScopedConfigObject(ConfigObject):
@@ -33,7 +35,17 @@ class ScopedConfigObject(ConfigObject):
 
     @staticmethod
     def _is_unscoped(name):
-        unscoped_items = {'unscoped', 'pop_scope', 'get_ident', 'get_section', 'rm_item', 'rm_items', 'add_item', 'iter_multival', 'rm', 'has_item'}
+        unscoped_items = {'unscoped',
+                          'pop_scope',
+                          'get_ident',
+                          'get_section',
+                          'rm_item',
+                          'rm_items',
+                          'add_item',
+                          'iter_multival',
+                          'rm',
+                          'has_item',
+                          'iteritems'}
         if name.startswith('_'):
             return True
         return name in unscoped_items
@@ -146,3 +158,25 @@ class ScopedConfigObject(ConfigObject):
 
         """
         return super().__getattribute__(name)
+
+    def _iteritems_impl(self, properties):
+        """Iterate over all key, value items in this and all child scopes."""
+        try:
+            child = self.unscoped('_child')
+            properties = child._iteritems_impl(properties)
+        except AttributeError:
+            # No child scope
+            pass
+
+        # Get the items for this scope, but not child scopes.
+        for key, value in inspect.getmembers(self):
+            if self.has_item(key):
+                properties[key] = value
+        return properties
+
+    def iteritems(self):
+        """Iterate over all key, value items in all scopes."""
+        properties = dict()
+        properties = self._iteritems_impl(properties)
+        for key, value in properties.items():
+            yield key, value

@@ -44,24 +44,20 @@ class MyRunnable(git_project.RunnableConfigObject):
                            command='cd {builddir}/{branch} && make {target}',
                            description='Test command')
 
-    @staticmethod
-    def substitutions():
-        return [git_project.ConfigObjectItem('builddir',
-                                             '/home/me/builds',
-                                             'Build directory'),
-                git_project.ConfigObjectItem('target', 'debug', 'Build target')]
-
 def test_get(reset_directory, git):
     runnable = MyRunnable.get(git, 'project', 'test')
 
     assert runnable.command == 'cd {builddir}/{branch} && make {target}'
 
 def test_substitute_command(reset_directory, git):
-    class MyProject(object):
+    class MyProject(git_project.ConfigObject):
         def __init__(self):
-            self._section = 'project'
-            self.builddir = '/path/to/build'
-            self.target = 'debug'
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build',
+                             target='debug')
 
     runnable = MyRunnable.get(git, 'project', 'test')
 

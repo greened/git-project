@@ -25,16 +25,7 @@ class RunnableConfigObject(ConfigObject):
     """Base class for objects that use git-config as a backing store and act as
     command launchers.  Inherits from ConfigObject.
 
-    Derived classes should implement the ConfigObject protocol as well as a few
-    static and class methods, known as the RunnableConfigObject protocol:
-
-    substitutions (staticmethod): Return a list of ConfigObjectItem variable
-    that appear in the object's command, an optional default value and help text
-    for the variable.  The variables should be named after equivalent entries in
-    Project and ConfigObject-derived classes.  It's expected that the variables
-    definitely exist in Project because it is used as the fallback if the
-    ConfigObject lacks the variable.  In this way the ConfigObject is intended
-    to override project-wide defaults.
+    Derived classes should implement the ConfigObject protocol.
 
     """
     def __init__(self, git, section, subsection, ident, **kwargs):
@@ -68,12 +59,10 @@ class RunnableConfigObject(ConfigObject):
         formats = dict()
 
         found_path = False
-        for substitution in self.substitutions():
-            value = getattr(project, substitution.key, None)
-            if value is not None:
-                if substitution.key == 'path':
-                    found_path = True
-                formats[substitution.key] = value
+        for key, value in project.iteritems():
+            if key == 'path':
+                found_path = True
+            formats[key] = value
 
         if not found_path:
             # We haven't found a worktree or other construct to give us a path,
