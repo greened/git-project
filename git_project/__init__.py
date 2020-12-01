@@ -23,7 +23,7 @@ from .exception import GitProjectException
 from .git import Git
 from .gitproject import GitProject
 from .item import ConfigObjectItem
-from .parsermanager import gen_config_epilog, gen_runnable_epilog, ParserManager
+from .parsermanager import ParserManager
 from .plugin import Plugin
 from .pluginmanager import PluginManager
 from .project import Project

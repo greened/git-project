@@ -17,16 +17,11 @@
 #
 
 from .configobj import ConfigObject
-from .item import ConfigObjectItem
 
 class GitProject(ConfigObject):
     """Manage the global git-project config."""
 
-    _configitems = [ConfigObjectItem('name',
-                                     None,
-                                     'Projects associated with this repository')]
-
-    def __init__(self, git, section, subsection, ident, configitems):
+    def __init__(self, git, section, subsection, ident):
         """GitProject construction.  This should be treated as a private method and all
         construction should occur through the get method.
 
@@ -38,16 +33,13 @@ class GitProject(ConfigObject):
 
         ident: The name of this specific ConfigObject.
 
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
-
         **kwargs: Keyword arguments of property values to set upon construction.
 
         """
         assert section == 'gitproject'
         assert subsection == None
         assert ident == None
-        super().__init__(git, section, subsection, ident, configitems)
+        super().__init__(git, section, subsection, ident)
 
     @classmethod
     def get(cls, git):
@@ -61,8 +53,7 @@ class GitProject(ConfigObject):
         return super().get(git,
                            'gitproject',
                            None,
-                           None,
-                           GitProject.configitems())
+                           None)
 
     def iternames(self):
         """Iteratte over the configured project names."""

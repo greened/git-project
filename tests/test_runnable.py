@@ -28,27 +28,21 @@ class MyRunnable(git_project.RunnableConfigObject):
                  project_section,
                  subsection,
                  ident,
-                 configitems,
                  **kwargs):
         super().__init__(git,
                          project_section,
                          subsection,
                          ident,
-                         configitems,
                          **kwargs)
 
     @classmethod
-    def get(cls, git, project_section, ident, **kwargs):
-        configitems = [git_project.ConfigObjectItem('command',
-                                                    'cd {builddir}/{branch} && make {target}',
-                                                    "Test command")]
-
+    def get(cls, git, project_section, ident):
         return super().get(git,
                            project_section,
                            'myrunnable',
                            ident,
-                           configitems,
-                           **kwargs)
+                           command='cd {builddir}/{branch} && make {target}',
+                           description='Test command')
 
     @staticmethod
     def substitutions():

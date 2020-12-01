@@ -16,6 +16,7 @@
 # this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+import inspect
 import os
 
 import git_project
@@ -28,28 +29,19 @@ class MyThing(git_project.ConfigObject):
                  project_section,
                  subsection,
                  ident,
-                 configitems,
                  **kwargs):
         super().__init__(git,
                          project_section,
                          subsection,
                          ident,
-                         configitems,
                          **kwargs)
 
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
-        configitems = [git_project.ConfigObjectItem('first',
-                                                    'firstdefault',
-                                                    'First thing'),
-                       git_project.ConfigObjectItem('second',
-                                                    'seconddefault',
-                                                    'Second thing')]
         return super().get(git,
                            project_section,
                            'mything',
                            ident,
-                           configitems,
                            **kwargs)
 
 def check_lines(section,
@@ -92,6 +84,14 @@ def check_lines(section,
 def test_get(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
+    assert not hasattr(thing, 'first')
+    assert not hasattr(thing, 'second')
+
+    git.config.set_item(thing.get_section(), 'first', 'firstdefault')
+    git.config.set_item(thing.get_section(), 'second', 'seconddefault')
+
+    thing = MyThing.get(git, 'project', 'test')
+
     assert thing.first == 'firstdefault'
     assert thing.second == 'seconddefault'
 
@@ -99,29 +99,22 @@ def test_get_with_kwargs(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test', first='newfirst')
 
     assert thing.first == 'newfirst'
-    assert thing.second == 'seconddefault'
 
 def test_get_user_attribute(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
-    assert thing.first == 'firstdefault'
-    assert thing.second == 'seconddefault'
     assert not hasattr(thing, 'third')
 
     thing.third = "thirddefault"
 
     newthing = MyThing.get(git, 'project', 'test')
 
-    assert newthing.first == 'firstdefault'
-    assert newthing.second == 'seconddefault'
     assert newthing.third == 'thirddefault'
 
     newthing.third = "newthird"
 
     anotherthing = MyThing.get(git, 'project', 'test')
 
-    assert anotherthing.first == 'firstdefault'
-    assert anotherthing.second == 'seconddefault'
     assert anotherthing.third == 'newthird'
 
     del newthing.third
@@ -129,24 +122,18 @@ def test_get_user_attribute(reset_directory, git):
 def test_del_user_attribute(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
-    assert thing.first == 'firstdefault'
-    assert thing.second == 'seconddefault'
     assert not hasattr(thing, 'third')
 
     thing.third = "thirddefault"
 
     newthing = MyThing.get(git, 'project', 'test')
 
-    assert newthing.first == 'firstdefault'
-    assert newthing.second == 'seconddefault'
     assert newthing.third == 'thirddefault'
 
     del newthing.third
 
     oldthing = MyThing.get(git, 'project', 'test')
 
-    assert oldthing.first == 'firstdefault'
-    assert oldthing.second == 'seconddefault'
     assert not hasattr(oldthing, 'third')
 
 def test_multival(reset_directory, git):
@@ -161,6 +148,9 @@ def test_multival(reset_directory, git):
 def test_write(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
+    thing.first = 'firstdefault'
+    thing.second = 'seconddefault'
+
     config = thing._git.config
 
     assert config.get_item(thing._section, 'first') == 'firstdefault'
@@ -171,6 +161,17 @@ def test_write(reset_directory, git):
 
 def test_rm(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
+
+    thing.first = 'firstdefault'
+    thing.second = 'seconddefault'
+
+    config = thing._git.config
+
+    assert config.get_item(thing._section, 'first') == 'firstdefault'
+    assert config.get_item(thing._section, 'second') == 'seconddefault'
+
+    assert check_lines(thing._section, 'first', 'firstdefault')
+    assert check_lines(thing._section, 'second', 'seconddefault')
 
     thing.rm()
 

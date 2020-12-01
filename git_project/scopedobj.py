@@ -33,12 +33,12 @@ class ScopedConfigObject(ConfigObject):
 
     @staticmethod
     def _is_unscoped(name):
-        unscoped_items = {'unscoped'}
+        unscoped_items = {'unscoped', 'pop_scope', 'get_ident', 'get_section', 'rm_item', 'rm_items', 'add_item', 'iter_multival', 'rm', 'has_item'}
         if name.startswith('_'):
             return True
         return name in unscoped_items
 
-    def __init__(self, git, section, subsection, ident, configitems, **kwargs):
+    def __init__(self, git, section, subsection, ident, **kwargs):
         """ScopedConfigObject construction.
 
         cls: The derived class being constructed.
@@ -51,13 +51,10 @@ class ScopedConfigObject(ConfigObject):
 
         ident: The name of this specific ScopedConfigObject.
 
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
-
         **kwargs: Keyword arguments of property values to set upon construction.
 
         """
-        super().__init__(git, section, subsection, ident, configitems, **kwargs)
+        super().__init__(git, section, subsection, ident, **kwargs)
 
     def __getattribute__(self, name):
         """Check child scopes if name is a config item otherwise get the unscoped value
@@ -70,7 +67,7 @@ class ScopedConfigObject(ConfigObject):
         return result if result else self.unscoped(f'{name}')
 
     @classmethod
-    def get(cls, git, project_section, subsection, ident, configitems, **kwargs):
+    def get(cls, git, project_section, subsection, ident, **kwargs):
         """Factory to construct ConfigObjects.
 
         cls: The derived class being constructed.
@@ -83,9 +80,6 @@ class ScopedConfigObject(ConfigObject):
 
         ident: The name of this specific ConfigObject.
 
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
-
         **kwargs: Keyword arguments of property values to set upon
           construction.
 
@@ -94,7 +88,6 @@ class ScopedConfigObject(ConfigObject):
                            project_section,
                            subsection,
                            ident,
-                           configitems,
                            **kwargs)
 
     def _lookup_attribute(self, name):
@@ -111,11 +104,7 @@ class ScopedConfigObject(ConfigObject):
         except AttributeError:
             pass
 
-        for item in self._configitems:
-            if name == item.key:
-                return self.unscoped(name)
-
-        return None
+        return self.unscoped(name)
 
     def push_scope(self, obj):
         """Push a new scope for this object.  This makes 'obj' the highest scope.  If
