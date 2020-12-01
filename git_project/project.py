@@ -19,7 +19,6 @@
 from pathlib import Path
 
 from .git import Git
-from .item import ConfigObjectItem
 from .scopedobj import ScopedConfigObject
 
 class Project(ScopedConfigObject):
@@ -32,14 +31,7 @@ class Project(ScopedConfigObject):
 
     """
 
-    _configitems = [ConfigObjectItem('remote',
-                                     'origin',
-                                     'Remotes relevant to the project'),
-                    ConfigObjectItem('branch',
-                                     'master',
-                                     'Branches to check for merge status')]
-
-    def __init__(self, git, section, subsection, ident, configitems, **kwargs):
+    def __init__(self, git, section, subsection, ident, **kwargs):
         """Project construction.  This should be treated as a private method and all
         construction should occur through the get method.
 
@@ -51,13 +43,12 @@ class Project(ScopedConfigObject):
 
         ident: The name of this specific ConfigObject.
 
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
-
         **kwargs: Keyword arguments of property values to set upon construction.
 
         """
-        super().__init__(git, section, subsection, ident, configitems, **kwargs)
+        super().__init__(git, section, subsection, ident, **kwargs)
+
+        self.set_defaults()
 
     @classmethod
     def get(cls, git, section, **kwargs):
@@ -74,14 +65,15 @@ class Project(ScopedConfigObject):
                               section,
                               None,
                               None,
-                              Project.configitems(),
                               **kwargs)
         return project
 
     def set_defaults(self):
-        """Set reasonable defaults for a Project based on the current reporitory."""
-
-        super()._set_defaults(Project.configitems())
+        if self._git.has_repo():
+            if not self.has_item('branch'):
+                self.branch = 'master'
+            if not self.has_item('remote'):
+                self.remote = 'origin'
 
     def add_remote(self, remote):
         """Add a remote for this project.  All branches for this project are checked

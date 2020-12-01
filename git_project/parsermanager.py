@@ -21,83 +21,6 @@ import sys
 
 from .exception import GitProjectException
 
-def gen_config_epilog(cls, project, subsection, configitems, secparam=None):
-    """Generate an option help epilog listing configuration variables available to set.
-
-    cls: A class adhering to the ConfigObject protocol
-
-    project: The active Project
-
-    subsection: The subsection of the ConfigObject.
-
-    configitems: Config items for the ConfigObject.
-
-    secparam: An optional string to substitute from a ConfigObject name in help
-    text.
-
-    For example, a Worktree may call gen_config_epilog with a <secparam> of
-    '<name>' to indicate that configuration variables live in separate
-    git-config sections for each unique worktree.
-
-    """
-    section = project.section
-    if subsection:
-        section += '.' + subsection
-
-    epilog = 'Configuration variables:\n\n'
-
-    if secparam:
-        section += '.' + secparam
-
-    width = len(max(map(lambda item: item.key, configitems),
-                    key=len)) + len(section) + 1
-
-    for item in configitems:
-        epilog += f"{section + '.' + item.key:<{width}s}  {item.description}\n"
-
-    return epilog
-
-def gen_runnable_epilog(cls, project, subsection, configitems, secparam=None):
-    """Generate an option help epilog listing available substitutions.  This also
-    calls gen_config_epilog to add help text for any configuration variables.
-
-    cls: A class adhering to the RunnableConfigObject protocol
-
-    project: The active Project
-
-    subsection: The subsection of the ConfigObject.
-
-    configitems: Config items for the ConfigObject.
-
-    secparam: An optional string to substitute from a ConfigObject name in help
-    text.
-
-    For example, a Worktree may call gen_runnable_epilog with a <secparam> of
-    '<name>' to indicate that configuration variables live in separate
-    git-config sections for each unique worktree.
-
-    """
-    epilog = gen_config_epilog(cls, project, subsection, configitems, secparam)
-    epilog += '\n\n'
-
-    epilog +="""Commands may use the following substitution expressions which get replaced by
-the corresponding configuration variables:\n\n"""
-
-    section = project.section
-    if subsection:
-        section += '.' + subsection
-
-    if secparam:
-        section += '.' + secparam
-
-    width = len(max(map(lambda item: item.key, cls.substitutions()),
-                    key=len)) + len(section) + 1
-
-    for item in cls.substitutions():
-        epilog += f"{section + '.' + item.key:<{width}s}  {item.description}\n"
-
-    return epilog
-
 class ParserManager(object):
     """A manager for argument parsers to track registered parsers and subparsers.
     This makes it easier to plugins to add their commands and options to various
@@ -248,11 +171,7 @@ class ParserManager(object):
         """
         self.__dict__ = ParserManager._shared_state
         parser = argparse.ArgumentParser(description=__doc__,
-                                         formatter_class=argparse.RawDescriptionHelpFormatter,
-                                         epilog=gen_config_epilog(gitproject,
-                                                                  project,
-                                                                  None,
-                                                                  project.configitems()))
+                                         formatter_class=argparse.RawDescriptionHelpFormatter)
         self.main_parser = self.Parser('__main__', parser)
         self.registered_subparsers = set()
         self.registered_parsers = {'__main__'}

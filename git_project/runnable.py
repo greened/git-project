@@ -37,7 +37,7 @@ class RunnableConfigObject(ConfigObject):
     to override project-wide defaults.
 
     """
-    def __init__(self, git, section, subsection, ident, configitems, **kwargs):
+    def __init__(self, git, section, subsection, ident, **kwargs):
         """RunnableConfigObject construction.  This should be treated as a private
         method and all construction should occur through the get method.
 
@@ -49,13 +49,10 @@ class RunnableConfigObject(ConfigObject):
 
         ident: The name of this specific ConfigObject.
 
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
-
         **kwargs: Keyword arguments of property values to set upon construction.
 
         """
-        super().__init__(git, section, subsection, ident, configitems, **kwargs)
+        super().__init__(git, section, subsection, ident, **kwargs)
 
     def substitute_command(self, git, project, clargs):
         """Given a project, perform variable substitution on the object's command and

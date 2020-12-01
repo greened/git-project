@@ -16,58 +16,42 @@
 # this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from git_project import ScopedConfigObject, ConfigObjectItem
+from git_project import ScopedConfigObject
 
 class ChildScope(ScopedConfigObject):
-    def __init__(self, git, project_section, subsection, name, configitems):
+    def __init__(self, git, project_section, subsection, name):
         super().__init__(git,
                          project_section,
                          subsection,
                          name,
-                         configitems,
                          name=name,
                          value='ChildScope',
                          childonly='ChildOnly')
 
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
-        configitems = [
-            ConfigObjectItem('name', None, "Name"),
-            ConfigObjectItem('value', None, "Value"),
-            ConfigObjectItem('childonly', None, "Child only"),
-        ]
-
         return super().get(git,
                            project_section,
                            'childscope',
                            ident,
-                           configitems,
                            **kwargs)
 
 class ParentScope(ScopedConfigObject):
-    def __init__(self, git, project_section, subsection, name, configitems):
+    def __init__(self, git, project_section, subsection, name):
         super().__init__(git,
                          project_section,
                          subsection,
                          name,
-                         configitems,
                          name=name,
                          value='ParentScope',
                          parentonly='ParentOnly')
 
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
-        configitems = [
-            ConfigObjectItem('name', None, "Name"),
-            ConfigObjectItem('value', None, "Value"),
-            ConfigObjectItem('parentonly', None, "Parent only"),
-        ]
-
         return super().get(git,
                            project_section,
                            'parentscope',
                            ident,
-                           configitems,
                            **kwargs)
 
 def test_push(reset_directory, git):

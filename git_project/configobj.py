@@ -17,8 +17,7 @@
 #
 
 import collections
-
-from .item import ConfigObjectItem
+import inspect
 
 class ConfigObject(object):
     """Base class for objects that use git-config as a backing store.  Specified
@@ -30,7 +29,6 @@ class ConfigObject(object):
                  project_section,
                  subsection,
                  ident,
-                 configitems,
                  **kwargs):
         """ConfigObject construction.  This should be treated as a private method and
         all construction should occur through the get method.
@@ -43,9 +41,6 @@ class ConfigObject(object):
 
         ident: The name of this specific ConfigObject.
 
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
-
         **kwargs: Keyword arguments of property values to set upon construction.
 
         """
@@ -53,12 +48,10 @@ class ConfigObject(object):
         self._project_section = project_section
         self._subsection = subsection
         self._ident = ident
-        self._configitems = configitems
         self._section = ConfigObject._get_full_section(self._project_section,
                                                        self._subsection,
                                                        self._ident)
-        self._set_defaults(configitems)
-        self._init_from_dict(configitems, kwargs)
+        self._init_from_dict(kwargs)
 
     def __setattr__(self, name, value):
         if name.startswith('_'):
@@ -67,7 +60,7 @@ class ConfigObject(object):
 
         # The git config can only handle string values.
         assert(isinstance(value, str))
-        self.set_item(name, value)
+        self._set_item(name, value)
 
     def __delattr__(self, name):
         if name.startswith('_'):
@@ -81,7 +74,6 @@ class ConfigObject(object):
             project_section,
             subsection,
             ident,
-            configitems,
             **kwargs):
         """Factory to construct ConfigObjects.
 
@@ -94,9 +86,6 @@ class ConfigObject(object):
         subsection: An arbitrarily-long subsection appended to project_section
 
         ident: The name of this specific ConfigObject.
-
-        configitems: A list of ConfigObjectItem describing members of the config
-                     section.
 
         **kwargs: Keyword arguments of property values to set upon construction.
 
@@ -123,7 +112,6 @@ class ConfigObject(object):
                      project_section,
                      subsection,
                      ident,
-                     configitems,
                      **inits)
 
         return result
@@ -156,48 +144,6 @@ class ConfigObject(object):
 
         return True if git.config.get_section(gitsection) else False
 
-    @classmethod
-    def configitems(cls):
-        """Return the config items for this ConfigObject.  By default returns the
-        _configitems class attribute.  Classes without a _copnfigitems attribute
-        should override this method.
-
-        cls: The ConfigObject class to query.
-
-        """
-        return cls._configitems
-
-    @classmethod
-    def add_config_item(cls, name, default, description):
-        """Add a config item for this ConfigObject.  By default it modifies the
-        _configitems class attribute.  Classes without a _configitems atttribute
-        should override this method.
-
-        cls: The ConfigObject class to modify.
-
-        """
-        for item in cls.configitems():
-            if item.key == name:
-                return
-        cls._configitems.append(ConfigObjectItem(name, default, description))
-
-    @classmethod
-    def rm_config_item(cls, name, default, description):
-        """Remove a config item for this ConfigObject.  By default it modifies the
-        _configitems class attribute.  Classes without a _configitems atttribute
-        should override this method.
-
-        cls: The ConfigObject class to modify.
-
-        """
-        newitems = []
-        for item in cls.configitems():
-            if item.key == name:
-                continue
-            newitems.append(item)
-
-        cls._configitems = newitems
-
     @staticmethod
     def _get_full_section(section, subsection, ident):
         """Construct a full git section name by appending subsection and ident (if not
@@ -210,16 +156,6 @@ class ConfigObject(object):
         if ident:
             result += '.' + ident
         return result
-
-    @property
-    def section(self):
-        """Return the full git config section for this object."""
-        return self._section
-
-    @property
-    def name(self):
-        """Return the identify of this object."""
-        return self._ident
 
     @classmethod
     def get_managing_command(cls):
@@ -242,11 +178,38 @@ class ConfigObject(object):
                 result = result[0]
             return result
         def fun_set(self, value):
-            self.set_item(name, value)
+            self._set_item(name, value)
         prop = property(fun_get, fun_set)
         setattr(cls, name, prop)
 
-    def set_item(self, name, value):
+    def has_item(self, name):
+        """Return whether self.<name> exists.  We don't want to use hasattr because
+        <name> is actually set on the class, not the instance.
+
+        """
+        if not isinstance(getattr(type(self), name, None), property):
+            return False
+
+        # It's not quite enough to know we have a property.  We might have a
+        # property from a previous instance but the git config entry in this
+        # instance might not be set.  This should not happen during normal
+        # operation as the command is quickly execute and the program
+        # terminates.  However, testing can have long-lived classes with many
+        # properties added to them.
+        if not self._git.has_repo():
+            return False
+
+        return self._git.config.has_item(self.get_section(), name)
+
+    def get_ident(self):
+        """Return the identifier of this object."""
+        return self._ident
+
+    def get_section(self):
+        """Return the section of this object."""
+        return self._section
+
+    def _set_item(self, name, value):
         """Set property name to value and write it to the git config."""
         if not hasattr(self.__class__, name):
             self._add_property(name)
@@ -261,7 +224,7 @@ class ConfigObject(object):
         self._git.config.rm_items(self._section, name)
         delattr(self.__class__, name)
 
-    def get_item(self, name):
+    def _get_item(self, name):
         """Get the value for property 'name.'"""
         return self._git.config.get_item(self._section, name)
 
@@ -274,7 +237,7 @@ class ConfigObject(object):
             self._add_property(name)
         self._git.config.add_item(self._section, name, value)
 
-    def _init_from_dict(self, configitems, values):
+    def _init_from_dict(self, values):
         """Set properties of the object using the mapping in dictionary valuees.  Mapped
         valuees that are sequences create multi-value keys.
 
@@ -289,14 +252,7 @@ class ConfigObject(object):
                 for v in value:
                     self.add_item(key, v)
             else:
-                self.set_item(key, value)
-
-    def _set_defaults(self, configitems):
-        """Query the derived class for default values of properties and set them."""
-        if self._git.has_repo():
-            for item in configitems:
-                if item.default:
-                    self.set_item(item.key, item.default)
+                self._set_item(key, value)
 
     def iter_multival(self, name):
         """Iterate over the multiple values of a multi-value git config key."""
@@ -306,9 +262,7 @@ class ConfigObject(object):
     def __repr__(self):
         """Serialize the object as a string."""
         return str({key:value for (key, value) in
-                    map(lambda item: (item.key, [value for value in self.iter_multival(item.key)]
-                                      if hasattr(self, item.key) else None),
-                        self._configitems)})
+                    self.__dict__.items() if not key.startswith('_')})
 
     def __str__(self):
         """Serialize the object as a string."""
@@ -316,7 +270,8 @@ class ConfigObject(object):
 
     def rm(self):
         """Remove the entire section of this object from the git config."""
-        for item in self._configitems:
-            self._git.config.rm_item(self._section, item.key, '.*')
+        for key, value in inspect.getmembers(self):
+            if isinstance(getattr(type(self), key, None), property):
+                self.rm_items(key)
         # Removing all section entries removes the section.
         #self._git.config.rm_section(self._section)
