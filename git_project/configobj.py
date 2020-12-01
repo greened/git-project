@@ -270,8 +270,13 @@ class ConfigObject(object):
 
     def rm(self):
         """Remove the entire section of this object from the git config."""
-        for key, value in inspect.getmembers(self):
-            if isinstance(getattr(type(self), key, None), property):
-                self.rm_items(key)
+        for key, value in self.iteritems():
+            self.rm_items(key)
         # Removing all section entries removes the section.
         #self._git.config.rm_section(self._section)
+
+    def iteritems(self):
+        """Iterate over all key, value items."""
+        for key, value in inspect.getmembers(self):
+            if self.has_item(key):
+                yield key, value

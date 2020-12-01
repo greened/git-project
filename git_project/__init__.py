@@ -22,7 +22,6 @@ from .configobj import ConfigObject
 from .exception import GitProjectException
 from .git import Git
 from .gitproject import GitProject
-from .item import ConfigObjectItem
 from .parsermanager import ParserManager
 from .plugin import Plugin
 from .pluginmanager import PluginManager

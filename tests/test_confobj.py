@@ -179,3 +179,13 @@ def test_rm(reset_directory, git):
                        section_present=False, key_present=False)
     assert check_lines(thing._section, 'second', 'seconddefault',
                        section_present=False, key_present=False)
+
+def test_iteritems(reset_directory, git):
+    thing = MyThing.get(git, 'project', 'test')
+
+    thing.first = 'firstdefault'
+    thing.second = 'seconddefault'
+
+    result = [key for key, value in thing.iteritems()]
+
+    assert result == ['first', 'second']
