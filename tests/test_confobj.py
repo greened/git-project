@@ -186,6 +186,19 @@ def test_iteritems(reset_directory, git):
     thing.first = 'firstdefault'
     thing.second = 'seconddefault'
 
-    result = [key for key, value in thing.iteritems()]
+    result = [(key, value) for key, value in thing.iteritems()]
 
-    assert result == ['first', 'second']
+    assert result == [('first', 'firstdefault'), ('second', 'seconddefault')]
+
+def test_iteritems_multi(reset_directory, git):
+    thing = MyThing.get(git, 'project', 'test')
+
+    thing.first = 'firstdefault'
+    thing.second = 'seconddefault'
+
+    thing.add_item('second', 'secondsecond')
+
+    result = [(key, value) for key, value in thing.iteritems()]
+
+    assert result == [('first', 'firstdefault'),
+                      ('second', {'seconddefault', 'secondsecond'})]
