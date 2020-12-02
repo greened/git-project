@@ -278,6 +278,5 @@ class ConfigObject(object):
     def iteritems(self):
         """Iterate over all key, value items."""
         for key, value in inspect.getmembers(self):
-            print(f'iteritems check {key} -> {value}')
             if self.has_item(key):
                 yield key, value
