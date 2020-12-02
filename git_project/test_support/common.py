@@ -395,6 +395,9 @@ class GitProjectRunner(object):
         self.runner = runner
         self.directory = directory
 
+    def chdir(self, path):
+        self.directory = str(path)
+
     def run(self, expected_stdout_regexp, expected_stderr_regexp, *args):
         result = self.runner.run(self.command, *args, cwd=self.directory)
 
