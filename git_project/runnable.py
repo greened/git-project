@@ -73,7 +73,12 @@ class RunnableConfigObject(ConfigObject):
 
         formats['branch'] = git.get_current_branch()
 
-        command = command.format(**formats)
+        while True:
+            newcommand = command.format(**formats)
+            changed = False if newcommand == command else True
+            command = newcommand
+            if not changed:
+                break
 
         return command
 

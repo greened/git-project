@@ -68,3 +68,23 @@ def test_substitute_command(reset_directory, git):
     command = runnable.substitute_command(git, project, clargs)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.target}'
+
+def test_substitute_command_recursive(reset_directory, git):
+    class MyProject(git_project.ConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build/{target}',
+                             target='debug')
+
+    runnable = MyRunnable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    clargs = dict()
+
+    command = runnable.substitute_command(git, project, clargs)
+
+    assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
