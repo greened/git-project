@@ -121,8 +121,15 @@ class Git(object):
                         raise GitProjectException('Single value get for multival')
                     return next(iter(self._values))
 
+                def has_value(self, value):
+                    """Return whether the given value is in the item."""
+                    return value in self._values
+
                 def add_value(self, value):
                     """Add a value to this key, potentially turning it into a multi-value key."""
+                    if value in self._values:
+                        print(f'{value} in {self._values}')
+                    assert not value in self._values
                     self._values.add(value)
 
                 def clear(self):
@@ -187,6 +194,13 @@ class Git(object):
                 """Return whether this key exists in this section."""
                 return True if self._items.get(self.itemname(key), None) else False
 
+            def has_value(self, key, value):
+                """Return whether this key with this values exists in this section."""
+                item = self._items.get(self.itemname(key), None)
+                if not item:
+                    return False
+                return item.has_value(value)
+
             def get_item(self, key):
                 """Get the key:value pair for this key."""
                 item = self._items.get(self.itemname(key), None)
@@ -240,7 +254,8 @@ class Git(object):
                     section_entry = self.get_section(section)
                     if not section_entry:
                         section_entry = self.ConfigSection(self._git, section)
-                    section_entry.add_item(key, entry.value)
+                    if not section_entry.has_value(key, entry.value):
+                        section_entry.add_item(key, entry.value)
                     self._sections[section] = section_entry
 
         def get_section(self, section):
@@ -270,7 +285,8 @@ class Git(object):
             section = self._sections.get(section_name, None)
             if not section:
                 section = self.ConfigSection(self._git, section_name)
-            section.add_item(key, value)
+            if not section.has_value(key, value):
+                section.add_item(key, value)
             self._sections[section_name] = section
 
         def iter_multival(self, section_name, key):

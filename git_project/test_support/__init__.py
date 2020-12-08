@@ -16,6 +16,7 @@
 # this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
+from .common import check_config_file
 from .common import ParserManagerMock
 from .common import PluginMock
 from .common import orig_repository

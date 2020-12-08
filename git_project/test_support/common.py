@@ -413,3 +413,59 @@ class GitProjectRunner(object):
 def git_project_runner(reset_directory, script_runner):
     result = GitProjectRunner(script_runner, Path.cwd())
     return result
+
+def check_config_file(section,
+                      key,
+                      values,
+                      section_present = True):
+    found = False
+    parts = section.split('.', 1)
+    prefix = parts[0]
+    suffix = parts[1] if len(parts) == 2 else None
+
+    found_values = set()
+    lines = []
+    with open('config') as conffile:
+        found_section = False
+        in_section = False
+        for line in conffile:
+            lines.append(line)
+            match = re.match(r'^\[([^\s]*)( "([^"]*)")?\]$',
+                             line.strip())
+            if match:
+                matched_section = match.group(1)
+                matched_subsection = match.group(3)  # Could be None
+                if matched_section == prefix and matched_subsection == suffix:
+                    if not section_present:
+                        # This shouldn't be here
+                        return
+                    if not key:
+                        # We only care that the section is present
+                        return
+                    found_section = True
+                    in_section = True
+                else:
+                    in_section = False
+            elif key and in_section:
+                match = re.match(f'^\\s*{key} = (.*)$', line.strip())
+                if match:
+                    matched_value = match.group(1)
+                    if matched_value in found_values:
+                        for line in lines:
+                            print(line.rstrip())
+                        print(f'Duplicate values {key} = {matched_value}')
+                    assert not matched_value in found_values
+                    found_values.add(matched_value)
+
+        if found_section:
+            assert section_present
+        else:
+            assert not section_present
+
+        if values:
+            if not found_values == values:
+                for line in lines:
+                    print(line.rstrip())
+                print(f'Expected: {section} {key} = {values}')
+                print(f'Found: {section} {key} = {found_values}')
+            assert found_values == values
