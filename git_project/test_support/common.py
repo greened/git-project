@@ -327,19 +327,25 @@ def orig_repository(tmp_path_factory):
 #         yield stack.enter_context(init_clone(remote_repository.path, path))
 
 @pytest.fixture(scope="function")
-def remote_repository(request, orig_repository, tmp_path_factory):
+def remote_repository(request,
+                      reset_directory,
+                      orig_repository,
+                      tmp_path_factory):
     path = tmp_path_factory.mktemp(f'local_remote_{request.node.name}.git')
     return init_local_remote(orig_repository.path, path)
-
-@pytest.fixture(scope="function")
-def local_repository(request, remote_repository, tmp_path_factory):
-    path = tmp_path_factory.mktemp(f'local_remote_clone_{request.node.name}.git')
-    yield from init_clone(remote_repository.path, path)
 
 @pytest.fixture(scope="function")
 def reset_directory(request, tmp_path_factory):
     path = tmp_path_factory.mktemp(f'reset_dir_{request.node.name}.git')
     os.chdir(path)
+
+@pytest.fixture(scope="function")
+def local_repository(request,
+                     reset_directory,
+                     remote_repository,
+                     tmp_path_factory):
+    path = tmp_path_factory.mktemp(f'local_remote_clone_{request.node.name}.git')
+    yield from init_clone(remote_repository.path, path)
 
 @pytest.fixture(scope="function")
 def parser_manager_mock(request):
