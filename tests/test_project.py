@@ -29,38 +29,28 @@ def test_get_no_repository(reset_directory):
 
     project = git_project.Project.get(git, 'project')
 
-    assert not hasattr(project, 'remote')
-    assert not hasattr(project, 'branch')
-    assert not hasattr(project, 'builddir')
-    assert not hasattr(project, 'prefix')
-    assert not hasattr(project, 'sharedir')
-    assert not hasattr(project, 'configure')
-    assert not hasattr(project, 'build')
-    assert not hasattr(project, 'install')
+    assert not project.has_item('remote')
+    assert not project.has_item('branch')
+    assert not project.has_item('builddir')
+    assert not project.has_item('prefix')
+    assert not project.has_item('sharedir')
+    assert not project.has_item('configure')
+    assert not project.has_item('build')
+    assert not project.has_item('install')
 
-def test_get_in_repository(reset_directory, local_repository):
-    os.chdir(local_repository.path)
-
-    git = git_project.Git()
-
+def test_get_in_repository(git):
     project = git_project.Project.get(git, 'project')
 
     assert project.remote == 'origin'
     assert project.branch == 'master'
-    assert not hasattr(project, 'builddir')
-    assert not hasattr(project, 'prefix')
-    assert not hasattr(project, 'sharedir')
-    assert not hasattr(project, 'configure')
-    assert not hasattr(project, 'build')
-    assert not hasattr(project, 'install')
+    assert not project.has_item('builddir')
+    assert not project.has_item('prefix')
+    assert not project.has_item('sharedir')
+    assert not project.has_item('configure')
+    assert not project.has_item('build')
+    assert not project.has_item('install')
 
-def test_add_remote(reset_directory, local_repository):
-    os.chdir(local_repository.path)
-
-    git = git_project.Git()
-
-    project = git_project.Project.get(git, 'project')
-
+def test_add_remote(project):
     remotes = {remote for remote in project.iterremotes()}
 
     assert remotes == {'origin'}
@@ -71,13 +61,7 @@ def test_add_remote(reset_directory, local_repository):
 
     assert remotes == {'origin', 'upstream'}
 
-def test_add_branch(reset_directory, local_repository):
-    os.chdir(local_repository.path)
-
-    git = git_project.Git()
-
-    project = git_project.Project.get(git, 'project')
-
+def test_add_branch(project):
     branches = {branch for branch in project.iterbranches()}
 
     assert branches == {'master'}
@@ -88,13 +72,7 @@ def test_add_branch(reset_directory, local_repository):
 
     assert branches == {'master', 'project'}
 
-def test_iterrefnames(reset_directory, local_repository):
-    os.chdir(local_repository.path)
-
-    git = git_project.Git()
-
-    project = git_project.Project.get(git, 'project')
-
+def test_iterrefnames(project):
     project.add_branch('pushed')
 
     branches = {branch for branch in project.iterbranches()}
@@ -112,13 +90,7 @@ def test_iterrefnames(reset_directory, local_repository):
                     'refs/heads/pushed',
                     'refs/remotes/origin/pushed'}
 
-def test_branch_is_merged(reset_directory, local_repository):
-    os.chdir(local_repository.path)
-
-    git = git_project.Git()
-
-    project = git_project.Project.get(git, 'project')
-
+def test_branch_is_merged(project):
     assert project.branch_is_merged('master')
     assert not project.branch_is_merged('pushed')
     assert not project.branch_is_merged('notpushed')
@@ -126,13 +98,7 @@ def test_branch_is_merged(reset_directory, local_repository):
     assert project.branch_is_merged('merged_local')
     assert not project.branch_is_merged('unmerged')
 
-def test_branch_is_pushed(reset_directory, local_repository):
-    os.chdir(local_repository.path)
-
-    git = git_project.Git()
-
-    project = git_project.Project.get(git, 'project')
-
+def test_branch_is_pushed(project):
     assert not project.branch_is_pushed('master')
     assert project.branch_is_pushed('pushed')
     assert not project.branch_is_pushed('notpushed')
