@@ -16,9 +16,10 @@
 # this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-import os
-
 import git_project
+from git_project.test_support import check_config_file
+
+import os
 from pathlib import Path
 import shutil
 
@@ -88,3 +89,95 @@ def test_substitute_command_recursive(reset_directory, git):
     command = runnable.substitute_command(git, project, clargs)
 
     assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
+
+def test_substitute_command_no_dup(reset_directory, git):
+    class MyProject(git_project.ConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build/{target}',
+                             target='install')
+
+    runnable = MyRunnable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    project.build = 'devrel'
+    project.add_item('build', 'check-devrel')
+
+    check_config_file('project.myproject',
+                      'builddir',
+                      {'/path/to/build/{target}'})
+
+    check_config_file('project.myproject',
+                      'target',
+                      {'install'})
+
+    check_config_file('project.myproject',
+                      'build',
+                      {'devrel', 'check-devrel'})
+
+    clargs = dict()
+
+    command = runnable.substitute_command(git, project, clargs)
+
+    assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
+
+    check_config_file('project.myproject',
+                      'builddir',
+                      {'/path/to/build/{target}'})
+
+    check_config_file('project.myproject',
+                      'target',
+                      {'install'})
+
+    check_config_file('project.myproject',
+                      'build',
+                      {'devrel', 'check-devrel'})
+
+def test_run_no_dup(reset_directory, git):
+    class MyProject(git_project.ConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build/{target}',
+                             target='install')
+
+    runnable = MyRunnable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    project.build = 'devrel'
+    project.add_item('build', 'check-devrel')
+
+    check_config_file('project.myproject',
+                      'builddir',
+                      {'/path/to/build/{target}'})
+
+    check_config_file('project.myproject',
+                      'target',
+                      {'install'})
+
+    check_config_file('project.myproject',
+                      'build',
+                      {'devrel', 'check-devrel'})
+
+    clargs = dict()
+
+    runnable.run(git, project, clargs)
+
+    check_config_file('project.myproject',
+                      'builddir',
+                      {'/path/to/build/{target}'})
+
+    check_config_file('project.myproject',
+                      'target',
+                      {'install'})
+
+    check_config_file('project.myproject',
+                      'build',
+                      {'devrel', 'check-devrel'})
