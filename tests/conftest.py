@@ -22,6 +22,8 @@ from pathlib import Path
 import pygit2
 import pytest
 
+from git_project.test_support import check_config_file
+from git_project.test_support import git_project_runner
 from git_project.test_support import orig_repository
 from git_project.test_support import remote_repository
 from git_project.test_support import local_repository

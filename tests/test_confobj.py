@@ -21,6 +21,8 @@ import os
 import re
 
 import git_project
+from git_project.test_support import check_config_file
+
 from pathlib import Path
 import shutil
 
@@ -230,10 +232,18 @@ def test_get_no_dup(reset_directory, git):
 
     newthing  = MyThing.get(git, 'project', 'test')
 
-    with open('config') as conffile:
-        count = 0
-        pattern = re.compile('^\s*second = .*')
-        for line in conffile:
-            if pattern.match(line):
-                count = count + 1
-        assert count == 3
+    check_config_file('project.mything.test', 'first', {'firstdefault'})
+
+    check_config_file('project.mything.test',
+                      'second',
+                      {'seconddefault', 'secondsecond', 'secondthird'})
+
+    os.chdir(git._repo.path)
+
+    newgit = git_project.Git()
+
+    check_config_file('project.mything.test', 'first', {'firstdefault'})
+
+    check_config_file('project.mything.test',
+                      'second',
+                      {'seconddefault', 'secondsecond', 'secondthird'})
