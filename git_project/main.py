@@ -12,6 +12,8 @@ def main_impl(args=None):
 
     git = git_project.Git()
 
+    git.validate_config()
+
     project_name = Path(sys.argv[0]).name
 
     prefix = 'git-'
@@ -27,11 +29,15 @@ def main_impl(args=None):
 
     project = git_project.Project.get(git, project_name)
 
+    git.validate_config()
+
     clargs = git_project.parse_arguments(git, gp, project, plugin_manager, args)
 
     plugin_manager.initialize_plugins(git, gp, project)
 
     clargs.func(git, gp, project, clargs)
+
+    git.validate_config()
 
 def main(args=None):
     try:

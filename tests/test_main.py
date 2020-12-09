@@ -16,17 +16,25 @@
 # this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-from .commandline import parse_arguments, add_top_level_command
-from .commandline import get_or_add_top_level_command
-from .configobj import ConfigObject
-from .exception import GitProjectException
-from .git import Git
-from .gitproject import GitProject
-from .main import main_impl
-from .parsermanager import ParserManager
-from .plugin import Plugin
-from .pluginmanager import PluginManager
-from .project import Project
-from .runnable import RunnableConfigObject
-from .scopedobj import ScopedConfigObject
-from .shell import run_command_with_shell, iter_command, capture_command
+
+import git_project
+from git_project.test_support import check_config_file
+
+import os
+from pathlib import Path
+import shutil
+
+def test_main_no_dup(reset_directory, git, project):
+    project.build = 'devrel'
+
+    project.add_item('build', 'check-devrel')
+
+    check_config_file('project',
+                      'build',
+                      {'devrel', 'check-devrel'})
+
+    git_project.main_impl(['config', 'branch'])
+
+    check_config_file('project',
+                      'build',
+                      {'devrel', 'check-devrel'})
