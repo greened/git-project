@@ -127,8 +127,6 @@ class Git(object):
 
                 def add_value(self, value):
                     """Add a value to this key, potentially turning it into a multi-value key."""
-                    if value in self._values:
-                        print(f'{value} in {self._values}')
                     assert not value in self._values
                     self._values.add(value)
 
@@ -147,10 +145,15 @@ class Git(object):
                     self._values = {value for value in self._values
                                     if not re.search(pattern, value)}
 
-            def __init__(self, git, name):
+            def __init__(self, git, name, content_dict):
                 self._git = git
                 self._name = name
                 self._items = dict()
+                for key, values in content_dict.items():
+                    config_item = self.ConfigItem(self.itemname(key))
+                    for value in values:
+                        config_item.add_value(value)
+                    self._items[self.itemname(key)] = config_item
 
             @property
             def name(self):
@@ -183,6 +186,9 @@ class Git(object):
                 """Add a value to the given key, potentially turning it into a multi-value key.
 
                 """
+                if self.has_value(key, value):
+                    return
+
                 self._git._repo.config.set_multivar(self.itemname(key), re.escape(value), value)
                 item = self._items.get(self.itemname(key), None)
                 if not item:
@@ -249,14 +255,29 @@ class Git(object):
             self._sections = dict()
 
             if self._git.has_repo():
+                # First gather the contents of each section.  We do it this way
+                # because iteratively adding key, value means will will call
+                # add_entry for each item.  Since the underlying config already
+                # contains everything, we don't want to call add_entry again and
+                # add duplicates.  So we call a proper ConfigSection
+                # intialization after gathering all the entries.
+                sections = dict()
                 for entry in config:
                     section, key = entry.name.rsplit('.', 1)
-                    section_entry = self.get_section(section)
-                    if not section_entry:
-                        section_entry = self.ConfigSection(self._git, section)
-                    if not section_entry.has_value(key, entry.value):
-                        section_entry.add_item(key, entry.value)
-                    self._sections[section] = section_entry
+                    if not section in sections:
+                        sections[section] = dict()
+                    section_entry = sections[section]
+                    if not key in section_entry:
+                        section_entry[key] = set()
+                    section_entry[key].add(entry.value)
+
+                self._git.validate_config()
+                for section_name, section_dict in sections.items():
+                    config_section = self.ConfigSection(self._git,
+                                                        section_name,
+                                                        section_dict)
+                    self._sections[section_name] = config_section
+                self._git.validate_config()
 
         def get_section(self, section):
             """Get the named section from the config."""
@@ -273,7 +294,7 @@ class Git(object):
             """Set the value of key under section named by section_name to value."""
             section = self._sections.get(section_name, None)
             if not section:
-                section = self.ConfigSection(self._git, section_name)
+                section = self.ConfigSection(self._git, section_name, dict())
             section.set_item(key, value)
             self._sections[section_name] = section
 
@@ -284,7 +305,7 @@ class Git(object):
             """
             section = self._sections.get(section_name, None)
             if not section:
-                section = self.ConfigSection(self._git, section_name)
+                section = self.ConfigSection(self._git, section_name, dict())
             if not section.has_value(key, value):
                 section.add_item(key, value)
             self._sections[section_name] = section
@@ -362,6 +383,7 @@ class Git(object):
         if repo_path:
             self._repo = pygit2.Repository(repo_path)
             self._config = self.Config(self, self._repo.config)
+            self.validate_config()
 
     @property
     def config(self):
