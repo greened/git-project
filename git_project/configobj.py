@@ -193,7 +193,7 @@ class ConfigObject(object):
         # It's not quite enough to know we have a property.  We might have a
         # property from a previous instance but the git config entry in this
         # instance might not be set.  This should not happen during normal
-        # operation as the command is quickly execute and the program
+        # operation as the command is quickly executed and the program
         # terminates.  However, testing can have long-lived classes with many
         # properties added to them.
         if not self._git.has_repo():
