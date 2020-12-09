@@ -25,14 +25,26 @@ from pathlib import Path
 import shutil
 
 def test_main_no_dup(reset_directory, git, project):
+    project._git.validate_config()
+
+    project._git.validate_config()
+    git_project.main_impl(['config', 'branch'])
+
     project.build = 'devrel'
 
+    project._git.validate_config()
+    git_project.main_impl(['config', 'branch'])
+
     project.add_item('build', 'check-devrel')
+
+    project._git.validate_config()
+    git_project.main_impl(['config', 'branch'])
 
     check_config_file('project',
                       'build',
                       {'devrel', 'check-devrel'})
 
+    project._git.validate_config()
     git_project.main_impl(['config', 'branch'])
 
     check_config_file('project',
