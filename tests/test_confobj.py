@@ -84,7 +84,7 @@ def check_lines(section,
 
         return False
 
-def test_get(reset_directory, git):
+def test_confobj_get(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     assert not hasattr(thing, 'first')
@@ -98,12 +98,12 @@ def test_get(reset_directory, git):
     assert thing.first == 'firstdefault'
     assert thing.second == 'seconddefault'
 
-def test_get_with_kwargs(reset_directory, git):
+def test_confobj_get_with_kwargs(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test', first='newfirst')
 
     assert thing.first == 'newfirst'
 
-def test_get_user_attribute(reset_directory, git):
+def test_confobj_get_user_attribute(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     assert not hasattr(thing, 'third')
@@ -122,7 +122,7 @@ def test_get_user_attribute(reset_directory, git):
 
     del newthing.third
 
-def test_del_user_attribute(reset_directory, git):
+def test_confobj_del_user_attribute(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     assert not hasattr(thing, 'third')
@@ -139,7 +139,7 @@ def test_del_user_attribute(reset_directory, git):
 
     assert not hasattr(oldthing, 'third')
 
-def test_multival(reset_directory, git):
+def test_confobj_multival(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.add_item('test', 'one')
@@ -148,7 +148,7 @@ def test_multival(reset_directory, git):
     values = {value for value in thing.iter_multival('test')}
     assert values == {'one', 'two'}
 
-def test_write(reset_directory, git):
+def test_confobj_write(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.first = 'firstdefault'
@@ -162,7 +162,7 @@ def test_write(reset_directory, git):
     assert check_lines(thing._section, 'first', 'firstdefault')
     assert check_lines(thing._section, 'second', 'seconddefault')
 
-def test_rm(reset_directory, git):
+def test_confobj_rm(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.first = 'firstdefault'
@@ -183,7 +183,7 @@ def test_rm(reset_directory, git):
     assert check_lines(thing._section, 'second', 'seconddefault',
                        section_present=False, key_present=False)
 
-def test_iteritems(reset_directory, git):
+def test_confobj_iteritems(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.first = 'firstdefault'
@@ -193,7 +193,7 @@ def test_iteritems(reset_directory, git):
 
     assert result == [('first', 'firstdefault'), ('second', 'seconddefault')]
 
-def test_iteritems_multi(reset_directory, git):
+def test_confobj_iteritems_multi(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.first = 'firstdefault'
@@ -206,7 +206,7 @@ def test_iteritems_multi(reset_directory, git):
     assert result == [('first', 'firstdefault'),
                       ('second', {'seconddefault', 'secondsecond'})]
 
-def test_get_multi(reset_directory, git):
+def test_confobj_get_multi(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.first = 'firstdefault'
@@ -221,7 +221,7 @@ def test_get_multi(reset_directory, git):
     assert result == [('first', 'firstdefault'),
                       ('second', {'seconddefault', 'secondsecond'})]
 
-def test_get_no_dup(reset_directory, git):
+def test_confobj_get_no_dup(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 
     thing.first = 'firstdefault'

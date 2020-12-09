@@ -22,7 +22,7 @@ import git_project
 from pathlib import Path
 import shutil
 
-def test_get(reset_directory, local_repository):
+def test_gitproject_get(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -33,7 +33,7 @@ def test_get(reset_directory, local_repository):
 
     assert projects == []
 
-def test_iternames(reset_directory, local_repository):
+def test_gitproject_iternames(reset_directory, local_repository):
     # Gets to GITDIR
     os.chdir(local_repository.path)
 
