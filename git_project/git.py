@@ -709,3 +709,57 @@ class Git(object):
         refspecs = [f':{refname}']
         remote = self._repo.remotes[remote]
         remote.push(refspecs, callback)
+
+    def validate_config(self):
+        """Ensure the git config is sane.  This is primarily a development debugging
+        tool."""
+        if not self.has_repo():
+            return
+
+        found = dict()
+
+        def report_error(lines, message):
+            for line in lines:
+                print(line.rstrip())
+            raise Exception(message)
+
+        confpath = Path(f'{self._repo.path}')
+        # This might be a worktree.  Make sure we have a config file and if not,
+        # walk up until se wee one.
+        while not os.path.exists(confpath / 'config'):
+            newpath = confpath.parent
+            if newpath == confpath:
+                raise Exception(f'Cannot find git config file in {self._repo.path}')
+            confpath = newpath
+
+        with open(confpath / 'config') as conffile:
+            lines = []
+            secpath = ''
+            section = None
+            for line in conffile:
+                lines.append(line)
+                # Match a section header.
+                match = re.match(r'^\[([^\s]*)( "([^"]*)")?\]$',
+                                 line.strip())
+                if match:
+                    prefix = match.group(1)
+                    suffix = match.group(3)  # Could be None
+                    secpath = f'{prefix}.{suffix}' if suffix else f'{prefix}'
+                    if not secpath in found:
+                        found[secpath] = set()
+                    section = found[secpath]
+                else:
+                    # Not a section header, try to match key = value.
+                    match = re.match(r'^\s*([^\s=]+) = (.+)$', line.strip())
+                    if match:
+                        matched_key = match.group(1)
+                        matched_value = match.group(2)
+                        item = f'{matched_key} = {matched_value}'
+                        if section is None:
+                            report_error(lines,
+                                         f'git config {item} not in section')
+
+                        if item in section:
+                            report_error(lines,
+                                         f'git config duplicate entry {secpath}.{item}')
+                        section.add(item)
