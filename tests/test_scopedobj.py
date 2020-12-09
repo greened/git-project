@@ -54,7 +54,7 @@ class ParentScope(ScopedConfigObject):
                            ident,
                            **kwargs)
 
-def test_push(reset_directory, git):
+def test_scopedobj_push(reset_directory, git):
     parent = ParentScope.get(git, 'project', 'parent')
 
     child1 = ChildScope.get(git, 'project', 'child1')
@@ -78,7 +78,7 @@ def test_push(reset_directory, git):
     assert  child1.unscoped('_child') is child2
     assert  child2.unscoped('_child') is child3
 
-def test_pop(reset_directory, git):
+def test_scopedobj_pop(reset_directory, git):
     parent = ParentScope.get(git, 'project', 'parent')
 
     child1 = ChildScope.get(git, 'project', 'child1')
@@ -101,7 +101,7 @@ def test_pop(reset_directory, git):
     assert popped is child1
     assert not hasattr(super(ParentScope, parent), '_child')
 
-def test_attr(reset_directory, git):
+def test_scopedobj_attr(reset_directory, git):
     parent = ParentScope.get(git, 'project', 'parent')
 
     child = ChildScope.get(git, 'project', 'child')
@@ -120,7 +120,7 @@ def test_attr(reset_directory, git):
     assert parent.value == 'ParentScope'
     assert parent.parentonly == 'ParentOnly'
 
-def test_iteritems(reset_directory, git):
+def test_scopedobj_iteritems(reset_directory, git):
     parent = ParentScope.get(git, 'project', 'parent')
 
     child = ChildScope.get(git, 'project', 'child')
@@ -148,7 +148,7 @@ def test_iteritems(reset_directory, git):
                       ('value', 'ParentScope'),
                       ('parentonly', 'ParentOnly')}
 
-def test_iteritems_multi(reset_directory, git):
+def test_scopedobj_iteritems_multi(reset_directory, git):
     parent = ParentScope.get(git, 'project', 'parent')
 
     child = ChildScope.get(git, 'project', 'child')

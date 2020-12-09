@@ -22,10 +22,10 @@ import git_project
 from pathlib import Path
 import shutil
 
-def test_init(reset_directory,
-              remote_repository,
-              local_repository,
-              tmp_path_factory):
+def test_git_init(reset_directory,
+                  remote_repository,
+                  local_repository,
+                  tmp_path_factory):
     path = tmp_path_factory.mktemp('init-workdir')
     os.chdir(path)
     git = git_project.Git()
@@ -39,7 +39,7 @@ def test_init(reset_directory,
     assert git.has_repo()
     assert git._repo.path == local_repository.path
 
-def test_config(reset_directory, local_repository):
+def test_git_config(reset_directory, local_repository):
     def check_lines(section,
                     key,
                     value,
@@ -164,9 +164,9 @@ def test_config(reset_directory, local_repository):
     assert check_lines('testrm4', 'one', '1', section_present=False, key_present=False)
     assert check_lines('testrm4', 'one', '2', section_present=False, key_present=False)
 
-def test_is_bare_repository(reset_directory,
-                            remote_repository,
-                            local_repository):
+def test_git_is_bare_repository(reset_directory,
+                                remote_repository,
+                                local_repository):
     os.chdir(remote_repository.path)
 
     git = git_project.Git()
@@ -181,7 +181,7 @@ def test_is_bare_repository(reset_directory,
     assert git.has_repo()
     assert not git.is_bare_repository()
 
-def test_worktree(reset_directory, local_repository):
+def test_git_worktree(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -212,7 +212,7 @@ def test_worktree(reset_directory, local_repository):
 
     assert not os.path.exists(worktree_path)
 
-def test_get_working_copy_root(reset_directory, local_repository):
+def test_git_get_working_copy_root(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -221,7 +221,7 @@ def test_get_working_copy_root(reset_directory, local_repository):
 
     assert Path(git.get_working_copy_root()) == (Path(git._repo.path) / '..').resolve()
 
-def test_get_current_refname(reset_directory, local_repository):
+def test_git_get_current_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -229,7 +229,7 @@ def test_get_current_refname(reset_directory, local_repository):
 
     assert git.get_current_refname() == 'refs/heads/master'
 
-def test_committish_to_ref(reset_directory, local_repository):
+def test_git_committish_to_ref(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -238,7 +238,7 @@ def test_committish_to_ref(reset_directory, local_repository):
 
     assert git.committish_to_ref('HEAD').name == 'refs/heads/master'
 
-def test_committish_to_refname(reset_directory, local_repository):
+def test_git_committish_to_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -247,7 +247,7 @@ def test_committish_to_refname(reset_directory, local_repository):
 
     assert git.committish_to_refname('HEAD') == 'refs/heads/master'
 
-def test_get_committish_oid(reset_directory, local_repository):
+def test_git_get_committish_oid(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -257,7 +257,7 @@ def test_get_committish_oid(reset_directory, local_repository):
     assert (git.get_committish_oid('HEAD') ==
             git.get_committish_oid(git.committish_to_refname('HEAD')))
 
-def test_committish_exists(reset_directory, local_repository):
+def test_git_committish_exists(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -269,7 +269,7 @@ def test_committish_exists(reset_directory, local_repository):
     assert not git.committish_exists('refs/heads/bogus')
     assert not git.committish_exists('bogus')
 
-def test_is_strict_ancestor(reset_directory, local_repository):
+def test_git_is_strict_ancestor(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -280,7 +280,7 @@ def test_is_strict_ancestor(reset_directory, local_repository):
     assert not git.is_strict_ancestor('HEAD', 'HEAD~')
     assert not git.is_strict_ancestor('HEAD', 'HEAD')
 
-def test_refname_to_branch_name(reset_directory, local_repository):
+def test_git_refname_to_branch_name(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -290,7 +290,7 @@ def test_refname_to_branch_name(reset_directory, local_repository):
     assert git.refname_to_branch_name('refs/heads/master') == 'master'
     assert git.refname_to_branch_name('master') == 'master'
 
-def test_refname_to_branch_name_remote(reset_directory, local_repository):
+def test_git_refname_to_branch_name_remote(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -300,7 +300,7 @@ def test_refname_to_branch_name_remote(reset_directory, local_repository):
     assert git.refname_to_branch_name('refs/remotes/origin/master') == 'origin/master'
     assert git.refname_to_branch_name('origin/master') == 'origin/master'
 
-def test_branch_name_to_refname(reset_directory, local_repository):
+def test_git_branch_name_to_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -310,7 +310,7 @@ def test_branch_name_to_refname(reset_directory, local_repository):
     assert git.branch_name_to_refname('master') == 'refs/heads/master'
     assert git.branch_name_to_refname('refs/heads/master') == 'refs/heads/master'
 
-def test_get_remote_fetch_refname(reset_directory, local_repository):
+def test_git_get_remote_fetch_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -319,7 +319,7 @@ def test_get_remote_fetch_refname(reset_directory, local_repository):
 
     assert git.get_remote_fetch_refname('refs/heads/pushed', 'origin') == 'refs/remotes/origin/pushed'
 
-def test_get_remote_push_refname(reset_directory, local_repository):
+def test_git_get_remote_push_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -328,7 +328,7 @@ def test_get_remote_push_refname(reset_directory, local_repository):
 
     assert git.get_remote_push_refname('refs/heads/pushed', 'origin') == 'refs/remotes/origin/pushed'
 
-def test_get_remote_fetch_refname_oid(reset_directory, local_repository):
+def test_git_get_remote_fetch_refname_oid(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -340,7 +340,7 @@ def test_get_remote_fetch_refname_oid(reset_directory, local_repository):
 
     assert git.get_remote_fetch_refname_oid('refs/heads/pushed', 'origin') == pushed_oid
 
-def test_get_remote_push_refname_oid(reset_directory, local_repository):
+def test_git_get_remote_push_refname_oid(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -352,7 +352,7 @@ def test_get_remote_push_refname_oid(reset_directory, local_repository):
 
     assert git.get_remote_push_refname_oid('refs/heads/pushed', 'origin') == pushed_oid
 
-def test_committish_is_pushed(reset_directory, local_repository):
+def test_git_committish_is_pushed(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -363,7 +363,7 @@ def test_committish_is_pushed(reset_directory, local_repository):
     assert not git.committish_is_pushed('merged_local', 'origin')
     assert not git.committish_is_pushed('notpushed', 'origin')
 
-def test_refname_is_merged(reset_directory, local_repository):
+def test_git_refname_is_merged(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -377,7 +377,7 @@ def test_refname_is_merged(reset_directory, local_repository):
     assert not git.refname_is_merged('refs/heads/notpushed',
                                      'refs/remotes/origin/notpushed')
 
-def test_iterrefnames(reset_directory, local_repository):
+def test_git_iterrefnames(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -392,7 +392,7 @@ def test_iterrefnames(reset_directory, local_repository):
              'refs/heads/pushed',
              'refs/heads/unmerged'])
 
-def test_iterrefnames_str(reset_directory, local_repository):
+def test_git_iterrefnames_str(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -407,7 +407,7 @@ def test_iterrefnames_str(reset_directory, local_repository):
              'refs/heads/pushed',
              'refs/heads/unmerged'])
 
-def test_create_branch(reset_directory, local_repository):
+def test_git_create_branch(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -422,7 +422,7 @@ def test_create_branch(reset_directory, local_repository):
     assert git.committish_exists('weirdbranch')
     assert git.refname_is_merged('refs/heads/weirdbranch', 'refs/heads/master')
 
-def test_clone(reset_directory, remote_repository, tmp_path_factory):
+def test_git_clone(reset_directory, remote_repository, tmp_path_factory):
     path = tmp_path_factory.mktemp('clone-workdir')
 
     os.chdir(path)
@@ -456,7 +456,9 @@ def test_clone(reset_directory, remote_repository, tmp_path_factory):
     assert git.has_repo()
     assert git.is_bare_repository()
 
-def test_clone_with_path(reset_directory, remote_repository, tmp_path_factory):
+def test_git_clone_with_path(reset_directory,
+                             remote_repository,
+                             tmp_path_factory):
     path = tmp_path_factory.mktemp('clone-workdir')
     os.chdir(path)
 
@@ -475,7 +477,7 @@ def test_clone_with_path(reset_directory, remote_repository, tmp_path_factory):
     assert os.path.exists(clone_path)
     assert clone_path == str(path)
 
-def test_checkout(reset_directory, local_repository):
+def test_git_checkout(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -499,7 +501,7 @@ def test_checkout(reset_directory, local_repository):
     assert not (git.get_committish_oid('master') ==
                 git.get_committish_oid('unmerged'))
 
-def test_update_symbolic_ref(reset_directory, local_repository):
+def test_git_update_symbolic_ref(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -520,7 +522,7 @@ def test_update_symbolic_ref(reset_directory, local_repository):
     assert (git.get_committish_oid('HEAD') ==
             git.get_committish_oid('master'))
 
-def test_delete_branch(reset_directory, local_repository):
+def test_git_delete_branch(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -535,7 +537,7 @@ def test_delete_branch(reset_directory, local_repository):
     assert not git.committish_exists('todelete')
     assert not git.committish_exists('refs/heads/todelete')
 
-def test_delete_refname(reset_directory, local_repository):
+def test_git_delete_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -550,8 +552,8 @@ def test_delete_refname(reset_directory, local_repository):
     assert not git.committish_exists('todelete')
     assert not git.committish_exists('refs/heads/todelete')
 
-def test_remote_branch_exists(reset_directory,
-                              local_repository):
+def test_git_remote_branch_exists(reset_directory,
+                                  local_repository):
     os.chdir(local_repository.path)
 
     git = git_project.Git()
@@ -563,9 +565,9 @@ def test_remote_branch_exists(reset_directory,
     assert not git.remote_branch_exists('merged_local', 'origin')
     assert not git.remote_branch_exists('unmerged', 'origin')
 
-def test_delete_remote_refname(reset_directory,
-                               local_repository,
-                               remote_repository):
+def test_git_delete_remote_refname(reset_directory,
+                                   local_repository,
+                                   remote_repository):
     os.chdir(local_repository.path)
 
     local_git = git_project.Git()
@@ -607,25 +609,25 @@ def test_delete_remote_refname(reset_directory,
     assert not remote_git.committish_exists('todelete')
     assert not remote_git.committish_exists('refs/heads/todelete')
 
-def test_detach_head(reset_directory,
-                     git):
+def test_git_detach_head(reset_directory,
+                         git):
     git.detach_head()
     assert git.head_is_detached()
 
-def test_detach_head_bare(reset_directory,
-                          bare_git):
+def test_git_detach_head_bare(reset_directory,
+                              bare_git):
     bare_git.detach_head()
     assert bare_git.head_is_detached()
 
-def test_get_remote_fetch_refspecs(reset_directory,
-                                   git):
+def test_git_get_remote_fetch_refspecs(reset_directory,
+                                       git):
     refspecs = git.get_remote_fetch_refspecs('origin')
     # Why this is duplicated is not clear...
     assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
                         '+refs/heads/*:refs/remotes/origin/*']
 
-def test_set_remote_fetch_refspecs(reset_directory,
-                                   git):
+def test_git_set_remote_fetch_refspecs(reset_directory,
+                                       git):
     refspecs = git.get_remote_fetch_refspecs('origin')
     assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
                         '+refs/heads/*:refs/remotes/origin/*']
@@ -636,7 +638,7 @@ def test_set_remote_fetch_refspecs(reset_directory,
     refspecs = git.get_remote_fetch_refspecs('origin')
     assert refspecs == new_refspecs
 
-def test_set_remote_fetch_refspecs_str(reset_directory, git):
+def test_git_set_remote_fetch_refspecs_str(reset_directory, git):
     refspecs = git.get_remote_fetch_refspecs('origin')
     assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
                         '+refs/heads/*:refs/remotes/origin/*']
@@ -647,7 +649,7 @@ def test_set_remote_fetch_refspecs_str(reset_directory, git):
     refspecs = git.get_remote_fetch_refspecs('origin')
     assert refspecs == [new_refspecs]
 
-def test_fetch_remote(reset_directory,
+def test_git_fetch_remote(reset_directory,
                       git):
     new_refspecs = ['+refs/heads/*:refs/remotes/origin/changed/*']
     git.set_remote_fetch_refspecs('origin', new_refspecs)
@@ -657,7 +659,7 @@ def test_fetch_remote(reset_directory,
     refs = [ref for ref in git.iterrefnames(['refs/remotes/origin/changed'])]
     assert len(refs) > 0
 
-def test_iterbranches(reset_directory, git):
+def test_git_iterbranches(reset_directory, git):
     branches = [branch for branch in git.iterbranches()]
     assert branches == ['master',
                         'merged_local',
@@ -670,15 +672,15 @@ def test_iterbranches(reset_directory, git):
                         'origin/notpushed',
                         'origin/pushed']
 
-def test_get_branch_upstream(reset_directory, git):
+def test_git_get_branch_upstream(reset_directory, git):
     master_upstream = git.get_branch_upstream('master')
     assert master_upstream == 'origin/master'
 
-def test_get_branch_upstream_refname(reset_directory, git):
+def test_git_get_branch_upstream_refname(reset_directory, git):
     master_upstream = git.get_branch_upstream('refs/heads/master')
     assert master_upstream == 'origin/master'
 
-def test_set_branch_upstream(reset_directory, git):
+def test_git_set_branch_upstream(reset_directory, git):
     assert git.get_branch_upstream('master') == 'origin/master'
 
     git.set_branch_upstream('master', None)
@@ -689,5 +691,5 @@ def test_set_branch_upstream(reset_directory, git):
 
     assert git.get_branch_upstream('master') == 'origin/master'
 
-def test_get_curent_branch(reset_directory, git):
+def test_git_get_curent_branch(reset_directory, git):
     assert git.get_current_branch() == 'master'

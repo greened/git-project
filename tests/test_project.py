@@ -22,7 +22,7 @@ import git_project
 from pathlib import Path
 import shutil
 
-def test_get_no_repository(reset_directory):
+def test_project_get_no_repository(reset_directory):
     git = git_project.Git()
 
     assert not git.has_repo()
@@ -38,7 +38,7 @@ def test_get_no_repository(reset_directory):
     assert not project.has_item('build')
     assert not project.has_item('install')
 
-def test_get_in_repository(git):
+def test_project_get_in_repository(git):
     project = git_project.Project.get(git, 'project')
 
     assert project.remote == 'origin'
@@ -50,7 +50,7 @@ def test_get_in_repository(git):
     assert not project.has_item('build')
     assert not project.has_item('install')
 
-def test_add_remote(project):
+def test_project_add_remote(project):
     remotes = {remote for remote in project.iterremotes()}
 
     assert remotes == {'origin'}
@@ -61,7 +61,7 @@ def test_add_remote(project):
 
     assert remotes == {'origin', 'upstream'}
 
-def test_add_branch(project):
+def test_project_add_branch(project):
     branches = {branch for branch in project.iterbranches()}
 
     assert branches == {'master'}
@@ -72,7 +72,7 @@ def test_add_branch(project):
 
     assert branches == {'master', 'project'}
 
-def test_iterrefnames(project):
+def test_project_iterrefnames(project):
     project.add_branch('pushed')
 
     branches = {branch for branch in project.iterbranches()}
@@ -90,7 +90,7 @@ def test_iterrefnames(project):
                     'refs/heads/pushed',
                     'refs/remotes/origin/pushed'}
 
-def test_branch_is_merged(project):
+def test_project_branch_is_merged(project):
     assert project.branch_is_merged('master')
     assert not project.branch_is_merged('pushed')
     assert not project.branch_is_merged('notpushed')
@@ -98,7 +98,7 @@ def test_branch_is_merged(project):
     assert project.branch_is_merged('merged_local')
     assert not project.branch_is_merged('unmerged')
 
-def test_branch_is_pushed(project):
+def test_project_branch_is_pushed(project):
     assert not project.branch_is_pushed('master')
     assert project.branch_is_pushed('pushed')
     assert not project.branch_is_pushed('notpushed')
@@ -106,7 +106,9 @@ def test_branch_is_pushed(project):
     assert not project.branch_is_pushed('merged_local')
     assert not project.branch_is_pushed('unmerged')
 
-def test_prune_branch(reset_directory, remote_repository, tmp_path_factory):
+def test_project_prune_branch(reset_directory,
+                              remote_repository,
+                              tmp_path_factory):
     remotedir = tmp_path_factory.mktemp('remote-workdir')
 
     os.chdir(remotedir)
