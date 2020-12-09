@@ -623,14 +623,12 @@ def test_git_get_remote_fetch_refspecs(reset_directory,
                                        git):
     refspecs = git.get_remote_fetch_refspecs('origin')
     # Why this is duplicated is not clear...
-    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
-                        '+refs/heads/*:refs/remotes/origin/*']
+    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*']
 
 def test_git_set_remote_fetch_refspecs(reset_directory,
                                        git):
     refspecs = git.get_remote_fetch_refspecs('origin')
-    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
-                        '+refs/heads/*:refs/remotes/origin/*']
+    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*']
 
     new_refspecs = ['+refs/heads/*:refs/remotes/origin/changed/*']
     git.set_remote_fetch_refspecs('origin',new_refspecs)
@@ -640,8 +638,7 @@ def test_git_set_remote_fetch_refspecs(reset_directory,
 
 def test_git_set_remote_fetch_refspecs_str(reset_directory, git):
     refspecs = git.get_remote_fetch_refspecs('origin')
-    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*',
-                        '+refs/heads/*:refs/remotes/origin/*']
+    assert refspecs == ['+refs/heads/*:refs/remotes/origin/*']
 
     new_refspecs = '+refs/heads/*:refs/remotes/origin/changed/*'
     git.set_remote_fetch_refspecs('origin',new_refspecs)

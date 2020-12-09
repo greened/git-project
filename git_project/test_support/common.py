@@ -228,7 +228,7 @@ def init_remote(remote_path, local_path):
 def init_clone(url, path):
     repo = pygit2.clone_repository(url, str(path))
 
-    repo.remotes.add_fetch('origin', '+refs/heads/*:refs/remotes/origin/*')
+    #repo.remotes.add_fetch('origin', '+refs/heads/*:refs/remotes/origin/*')
     origin = repo.remotes['origin']
     origin.fetch()
 
@@ -299,7 +299,7 @@ def init_clone(url, path):
 def init_local_remote(remote_path, clone_path):
     local_clone = pygit2.clone_repository(str(remote_path), str(clone_path), bare=True)
 
-    local_clone.remotes.add_fetch('origin', '+refs/heads/*:refs/remotes/origin/*')
+    #local_clone.remotes.add_fetch('origin', '+refs/heads/*:refs/remotes/origin/*')
 
     origin = local_clone.remotes['origin']
     origin.fetch()
