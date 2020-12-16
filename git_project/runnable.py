@@ -18,12 +18,12 @@
 
 from pathlib import Path
 
-from .configobj import ConfigObject
+from .substitutable import SubstitutableConfigObject
 from .shell import run_command_with_shell
 
-class RunnableConfigObject(ConfigObject):
+class RunnableConfigObject(SubstitutableConfigObject):
     """Base class for objects that use git-config as a backing store and act as
-    command launchers.  Inherits from ConfigObject.
+    command launchers.  Inherits from SubstitutableConfigObject.
 
     Derived classes should implement the ConfigObject protocol.
 
@@ -46,57 +46,17 @@ class RunnableConfigObject(ConfigObject):
         super().__init__(git, section, subsection, ident, **kwargs)
 
     def substitute_command(self, git, project, clargs):
-        """Given a project, perform variable substitution on the object's command and
-        return the result as a string.
+        """Given a project, perform variable substitution on the command and return the
+        result as a string.
 
         git: An object to query the repository and make config changes.
 
         project: The currently active Project.
 
+        clargs: Command-line arguments
+
         """
-        command = self.command
-
-        formats = dict()
-
-        found_path = False
-        for key, value in project.iteritems():
-            if key == 'path':
-                found_path = True
-            if key == self.get_subsection():
-                value = self.get_ident()
-            formats[key] = value
-
-        formats['project'] = project.get_section()
-
-        if not found_path:
-            # We haven't found a worktree or other construct to give us a path,
-            # so do a mildly expensive thing to get the path of the curernt
-            # working copy.
-            path = git.get_working_copy_root()
-            formats['path'] = path
-
-        formats['branch'] = git.get_current_branch()
-
-        while True:
-            try:
-                newcommand = command.format(**formats)
-            except KeyError as exception:
-                # See if this is a scope name.
-                for key in exception.args:
-                    scope = project.get_scope(key)
-                    if scope:
-                        value = scope.get_ident()
-                        formats[key] = value
-
-                # Try again after adding scopes.
-                newcommand = command.format(**formats)
-
-            changed = False if newcommand == command else True
-            command = newcommand
-            if not changed:
-                break
-
-        return command
+        return self.substitute_value(git, project, clargs, self.command)
 
     def run(self, git, project, clargs):
         """Do variable substitution and run the resulting command.

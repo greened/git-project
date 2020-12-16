@@ -29,4 +29,5 @@ from .pluginmanager import PluginManager
 from .project import Project
 from .runnable import RunnableConfigObject
 from .scopedobj import ScopedConfigObject
+from .substitutable import SubstitutableConfigObject
 from .shell import run_command_with_shell, iter_command, capture_command
