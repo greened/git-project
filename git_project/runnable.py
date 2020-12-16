@@ -62,6 +62,8 @@ class RunnableConfigObject(ConfigObject):
         for key, value in project.iteritems():
             if key == 'path':
                 found_path = True
+            if key == self.get_subsection():
+                value = self.get_ident()
             formats[key] = value
 
         if not found_path:

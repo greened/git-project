@@ -209,6 +209,10 @@ class ConfigObject(object):
         """Return the section of this object."""
         return self._section
 
+    def get_subsection(self):
+        """Return the subsection of this object."""
+        return self._subsection
+
     def _set_item(self, name, value):
         """Set property name to value and write it to the git config."""
         if not hasattr(self.__class__, name):

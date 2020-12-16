@@ -181,3 +181,25 @@ def test_runnable_run_no_dup(reset_directory, git):
     check_config_file('project.myproject',
                       'build',
                       {'devrel', 'check-devrel'})
+
+def test_runnable_substitute_command_subsection(reset_directory, git):
+    class MyProject(git_project.ConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build',
+                             target='{myrunnable}')
+
+    runnable = MyRunnable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    project.myrunnable = 'test'
+
+    clargs = dict()
+
+    command = runnable.substitute_command(git, project, clargs)
+
+    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.myrunnable}'
