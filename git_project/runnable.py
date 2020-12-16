@@ -78,7 +78,19 @@ class RunnableConfigObject(ConfigObject):
         formats['branch'] = git.get_current_branch()
 
         while True:
-            newcommand = command.format(**formats)
+            try:
+                newcommand = command.format(**formats)
+            except KeyError as exception:
+                # See if this is a scope name.
+                for key in exception.args:
+                    scope = project.get_scope(key)
+                    if scope:
+                        value = scope.get_ident()
+                        formats[key] = value
+
+                # Try again after adding scopes.
+                newcommand = command.format(**formats)
+
             changed = False if newcommand == command else True
             command = newcommand
             if not changed:

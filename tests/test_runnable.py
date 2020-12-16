@@ -51,7 +51,7 @@ def test_runnable_get(reset_directory, git):
     assert runnable.command == 'cd {builddir}/{branch} && make {target}'
 
 def test_runnable_substitute_command(reset_directory, git):
-    class MyProject(git_project.ConfigObject):
+    class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(git,
                              'project',
@@ -71,7 +71,7 @@ def test_runnable_substitute_command(reset_directory, git):
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.target}'
 
 def test_runnable_substitute_command_recursive(reset_directory, git):
-    class MyProject(git_project.ConfigObject):
+    class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(git,
                              'project',
@@ -91,7 +91,7 @@ def test_runnable_substitute_command_recursive(reset_directory, git):
     assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
 
 def test_runnable_substitute_command_no_dup(reset_directory, git):
-    class MyProject(git_project.ConfigObject):
+    class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(git,
                              'project',
@@ -138,7 +138,7 @@ def test_runnable_substitute_command_no_dup(reset_directory, git):
                       {'devrel', 'check-devrel'})
 
 def test_runnable_run_no_dup(reset_directory, git):
-    class MyProject(git_project.ConfigObject):
+    class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(git,
                              'project',
@@ -183,7 +183,7 @@ def test_runnable_run_no_dup(reset_directory, git):
                       {'devrel', 'check-devrel'})
 
 def test_runnable_substitute_command_subsection(reset_directory, git):
-    class MyProject(git_project.ConfigObject):
+    class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(git,
                              'project',
@@ -205,7 +205,7 @@ def test_runnable_substitute_command_subsection(reset_directory, git):
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.myrunnable}'
 
 def test_runnable_substitute_project(reset_directory, git):
-    class MyProject(git_project.ConfigObject):
+    class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(git,
                              'project',
@@ -225,3 +225,35 @@ def test_runnable_substitute_project(reset_directory, git):
     command = runnable.substitute_command(git, project, clargs)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.myrunnable} {project.get_section()}'
+
+def test_runnable_substitute_scope(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build/{worktree}',
+                             target='{myrunnable} {project}')
+
+    class MyWorktree(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             'worktree',
+                             'myworktree')
+
+    runnable = MyRunnable.get(git, 'project', 'test')
+
+    project = MyProject()
+    worktree = MyWorktree()
+
+    project.push_scope(worktree)
+
+    project.myrunnable = 'test'
+
+    clargs = dict()
+
+    command = runnable.substitute_command(git, project, clargs)
+
+    assert command == f'cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.myrunnable} {project.get_section()}'
