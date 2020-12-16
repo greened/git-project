@@ -39,6 +39,7 @@ class ScopedConfigObject(ConfigObject):
                           'pop_scope',
                           'get_ident',
                           'get_section',
+                          'get_subsection',
                           'rm_item',
                           'rm_items',
                           'add_item',
@@ -180,3 +181,30 @@ class ScopedConfigObject(ConfigObject):
         properties = self._iteritems_impl(properties)
         for key, value in properties.items():
             yield key, value
+
+    def get_scope(self, subsection):
+        """Return the scope with the given subsection, else None.
+
+        subsection - The subsection of the scope we're looking for"""
+
+        # See if the child is what we're looking for.  This effectively starts
+        # the search at the topmost scope.
+        print(f'get_scope {subsection}')
+        try:
+            scope = self.unscoped('_child').get_scope()
+
+            if scope:
+                # It was some child.
+                print(f'Found child {scope.get_ident()}')
+                return scope
+        except AttributeError:
+            # No child scope
+            pass
+
+        if self.get_subsection() == subsection:
+            # It's us!
+            print(f'Found self {self.get_ident()}')
+            return self
+
+        # Not us, try lower scopes.
+        return None
