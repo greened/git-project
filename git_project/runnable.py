@@ -66,6 +66,8 @@ class RunnableConfigObject(ConfigObject):
                 value = self.get_ident()
             formats[key] = value
 
+        formats['project'] = project.get_section()
+
         if not found_path:
             # We haven't found a worktree or other construct to give us a path,
             # so do a mildly expensive thing to get the path of the curernt
