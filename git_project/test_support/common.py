@@ -409,11 +409,11 @@ class GitProjectRunner(object):
 
         assert result.success
 
-        stdout_re = re.compile(expected_stdout_regexp)
-        stderr_re = re.compile(expected_stderr_regexp)
+        stdout_re = re.compile(expected_stdout_regexp, re.M)
+        stderr_re = re.compile(expected_stderr_regexp, re.M)
 
-        assert stdout_re.match(result.stdout)
-        assert stderr_re.match(result.stderr)
+        assert stdout_re.search(result.stdout)
+        assert stderr_re.search(result.stderr)
 
 @pytest.fixture(scope="function")
 def git_project_runner(reset_directory, script_runner):
