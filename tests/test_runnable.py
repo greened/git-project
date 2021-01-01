@@ -66,7 +66,7 @@ def test_runnable_substitute_command(reset_directory, git):
 
     clargs = dict()
 
-    command = runnable.substitute_command(git, project, clargs)
+    command = runnable.substitute_command(git, project)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.target}'
 
@@ -86,7 +86,7 @@ def test_runnable_substitute_command_recursive(reset_directory, git):
 
     clargs = dict()
 
-    command = runnable.substitute_command(git, project, clargs)
+    command = runnable.substitute_command(git, project)
 
     assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
 
@@ -119,9 +119,7 @@ def test_runnable_substitute_command_no_dup(reset_directory, git):
                       'build',
                       {'devrel', 'check-devrel'})
 
-    clargs = dict()
-
-    command = runnable.substitute_command(git, project, clargs)
+    command = runnable.substitute_command(git, project)
 
     assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
 
@@ -198,9 +196,7 @@ def test_runnable_substitute_command_subsection(reset_directory, git):
 
     project.myrunnable = 'test'
 
-    clargs = dict()
-
-    command = runnable.substitute_command(git, project, clargs)
+    command = runnable.substitute_command(git, project)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.myrunnable}'
 
@@ -220,9 +216,7 @@ def test_runnable_substitute_project(reset_directory, git):
 
     project.myrunnable = 'test'
 
-    clargs = dict()
-
-    command = runnable.substitute_command(git, project, clargs)
+    command = runnable.substitute_command(git, project)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.myrunnable} {project.get_section()}'
 
@@ -252,8 +246,6 @@ def test_runnable_substitute_scope(reset_directory, git):
 
     project.myrunnable = 'test'
 
-    clargs = dict()
-
-    command = runnable.substitute_command(git, project, clargs)
+    command = runnable.substitute_command(git, project)
 
     assert command == f'cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.myrunnable} {project.get_section()}'

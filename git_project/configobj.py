@@ -142,7 +142,8 @@ class ConfigObject(object):
                                                     subsection,
                                                     ident)
 
-        return True if git.config.get_section(gitsection) else False
+        section = git.config.get_section(gitsection)
+        return True if section else False
 
     @staticmethod
     def _get_full_section(section, subsection, ident):

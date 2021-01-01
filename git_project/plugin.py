@@ -24,8 +24,12 @@ class Plugin(ABC):
     they may need.
 
     """
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         pass
+
+    def manpage(self):
+        return self.__doc__
 
     def initialize(self, git, gitproject, project, plugin_manager):
         """Run initialization code for the plugin.
@@ -43,7 +47,12 @@ class Plugin(ABC):
         pass
 
     @abstractmethod
-    def add_arguments(self, git, gitproject, project, parser_manager):
+    def add_arguments(self,
+                      git,
+                      gitproject,
+                      project,
+                      parser_manager,
+                      plugin_manager):
         """Add arguments and subparsers for plugins.
 
         git: A Git object to examine the repository.
@@ -51,8 +60,12 @@ class Plugin(ABC):
         gitproject: A GitProject object to explore and manipulate the active
                     project.
 
+        project: The currently-active project.
+
         parser_manager: A ParserManager object used to register options and
                         subparsers.
+
+        plugin_manager: A PluginManager object used to query plugins.
 
         Plugins may query the parser_manager for a top-level argparse-style
         subparser called 'command' to register new commands.  Each new command
@@ -72,10 +85,23 @@ class Plugin(ABC):
         original command is run, or even replace existing command logic
         entirely.
 
+        git: A Git object to examine the repository.
+
+        gitproject: A GitProject object to explore and manipulate the active
+                    project.
+
+        project: The currently-active project.
+
+        parser_manager: A ParserManager object used to register options and
+                        subparsers.
+
+        plugin_manager: A PluginManager object used to query plugins.
+
+
         """
         pass
 
-    def add_class_hooks(self, git, plugin_manager):
+    def add_class_hooks(self, git, project, plugin_manager):
         """Add any class hooks this plugin needs.  These hooks apply to class objects.
         Hooks can be anything at all, for example adding class members or
         enhancing existing properties.
