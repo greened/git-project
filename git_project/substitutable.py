@@ -45,15 +45,13 @@ class SubstitutableConfigObject(ConfigObject):
         """
         super().__init__(git, section, subsection, ident, **kwargs)
 
-    def substitute_value(self, git, project, clargs, string):
+    def substitute_value(self, git, project, string):
         """Given a project, perform variable substitution on a string and return the
         result as a string.
 
         git: An object to query the repository and make config changes.
 
         project: The currently active Project.
-
-        clargs: Command-line arguments
 
         string: The string on which to perform substitution.
 

@@ -394,6 +394,11 @@ class Git(object):
         """Return whether we are attached to a repository."""
         return hasattr(self, '_repo')
 
+    def reload_config(self):
+        """Reload the config."""
+        if self.has_repo():
+            self._config = self.Config(self, self._repo.config)
+
     def is_bare_repository(self):
         """Return whether the configured repository is bare."""
         return self._repo.is_bare

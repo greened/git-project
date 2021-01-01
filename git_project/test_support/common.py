@@ -423,7 +423,8 @@ def git_project_runner(reset_directory, script_runner):
 def check_config_file(section,
                       key,
                       values,
-                      section_present = True):
+                      section_present = True,
+                      key_present = True):
     found = False
     parts = section.split('.', 1)
     prefix = parts[0]
@@ -442,10 +443,7 @@ def check_config_file(section,
                 matched_section = match.group(1)
                 matched_subsection = match.group(3)  # Could be None
                 if matched_section == prefix and matched_subsection == suffix:
-                    if not section_present:
-                        # This shouldn't be here
-                        return
-                    if not key:
+                    if not key and section_present:
                         # We only care that the section is present
                         return
                     found_section = True
@@ -467,6 +465,8 @@ def check_config_file(section,
             assert section_present
         else:
             assert not section_present
+            # Don't check values.
+            return
 
         if values:
             if not found_values == values:

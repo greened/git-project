@@ -64,11 +64,8 @@ def test_substitutable_substitute_command(reset_directory, git):
 
     project = MyProject()
 
-    clargs = dict()
-
     command = substitutable.substitute_value(git,
                                              project,
-                                             clargs,
                                              substitutable.command)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.target}'
@@ -87,11 +84,8 @@ def test_substitutable_substitute_command_recursive(reset_directory, git):
 
     project = MyProject()
 
-    clargs = dict()
-
     command = substitutable.substitute_value(git,
                                              project,
-                                             clargs,
                                              substitutable.command)
 
     assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
@@ -125,11 +119,8 @@ def test_substitutable_substitute_command_no_dup(reset_directory, git):
                       'build',
                       {'devrel', 'check-devrel'})
 
-    clargs = dict()
-
     command = substitutable.substitute_value(git,
                                              project,
-                                             clargs,
                                              substitutable.command)
 
     assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
@@ -162,11 +153,8 @@ def test_substitutable_substitute_command_subsection(reset_directory, git):
 
     project.mysubstitutable = 'test'
 
-    clargs = dict()
-
     command = substitutable.substitute_value(git,
                                              project,
-                                             clargs,
                                              substitutable.command)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.mysubstitutable}'
@@ -187,11 +175,8 @@ def test_substitutable_substitute_project(reset_directory, git):
 
     project.mysubstitutable = 'test'
 
-    clargs = dict()
-
     command = substitutable.substitute_value(git,
                                              project,
-                                             clargs,
                                              substitutable.command)
 
     assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}'
@@ -222,11 +207,8 @@ def test_substitutable_substitute_scope(reset_directory, git):
 
     project.mysubstitutable = 'test'
 
-    clargs = dict()
-
     command = substitutable.substitute_value(git,
                                              project,
-                                             clargs,
                                              substitutable.command)
 
     assert command == f'cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}'

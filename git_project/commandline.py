@@ -70,12 +70,20 @@ def parse_arguments(git, gitproject, project, plugin_manager, args):
     command_subparser.required = True
 
     for plugin in plugin_manager.iterplugins():
-        plugin.add_arguments(git, gitproject, project, parser_manager)
+        plugin.add_arguments(git,
+                             gitproject,
+                             project,
+                             parser_manager,
+                             plugin_manager)
 
     # Once all plugins have added arguments, give them a chance to modify
     # arguments other plugsin may have added.
     for plugin in plugin_manager.iterplugins():
-        plugin.modify_arguments(git, gitproject, project, parser_manager, plugin_manager)
+        plugin.modify_arguments(git,
+                                gitproject,
+                                project,
+                                parser_manager,
+                                plugin_manager)
 
     clargs = parser_manager.parse_args(args)
 

@@ -20,7 +20,7 @@ import io
 import shlex
 import subprocess
 
-def run_command_with_shell(command, clargs=None, dry_run=False):
+def run_command_with_shell(command, dry_run=False, show_command=False):
     """Run a command.
 
     command: The command to run.
@@ -31,22 +31,14 @@ def run_command_with_shell(command, clargs=None, dry_run=False):
 
     """
 
-    show_commands = False
-    if clargs:
-        if not dry_run:
-            dry_run = clargs.dry_run
-            show_commands = clargs.show_commands
+    if dry_run or show_command:
+        print(command)
 
-        if dry_run:
-            print(command)
-        else:
-            if show_commands:
-                print(command)
+    if not dry_run:
+        proc = subprocess.Popen(command, shell=True)
 
-    proc = subprocess.Popen(command, shell=True)
-
-    # Wait for it to complete
-    proc.communicate()
+        # Wait for it to complete
+        proc.communicate()
 
 def capture_command(command,
                     clargs=None,

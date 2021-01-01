@@ -31,14 +31,14 @@ class PluginManager(object):
         self.__dict__ = PluginManager._shared_state
         self.plugins = []
 
-    def load_plugins(self, git):
+    def load_plugins(self, git, project):
         """Discover all plugins and instantiate them."""
         for entrypoint in pkg_resources.iter_entry_points(ENTRYPOINT):
             plugin_class = entrypoint.load()
             plugin = plugin_class()
             self.plugins.append(plugin)
         for plugin in self.iterplugins():
-            plugin.add_class_hooks(git, self)
+            plugin.add_class_hooks(git, project, self)
 
     def initialize_plugins(self, git, gitproject, project):
         """Run any plugin setup code before invoking the main command routines.  This is
