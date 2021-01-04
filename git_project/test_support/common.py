@@ -468,6 +468,10 @@ def check_config_file(section,
             # Don't check values.
             return
 
+        if not found_values:
+            assert not key_present
+            return
+
         if values:
             if not found_values == values:
                 for line in lines:
