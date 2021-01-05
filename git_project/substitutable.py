@@ -45,7 +45,7 @@ class SubstitutableConfigObject(ConfigObject):
         """
         super().__init__(git, section, subsection, ident, **kwargs)
 
-    def substitute_value(self, git, project, string):
+    def substitute_value(self, git, project, string, formats=dict()):
         """Given a project, perform variable substitution on a string and return the
         result as a string.
 
@@ -56,8 +56,6 @@ class SubstitutableConfigObject(ConfigObject):
         string: The string on which to perform substitution.
 
         """
-        formats = dict()
-
         found_path = False
         for key, value in project.iteritems():
             if key == 'path':
