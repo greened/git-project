@@ -23,7 +23,7 @@ def readme():
         return f.read()
 
 setup(name='git_project',
-      version='0.0.8',
+      version='0.0.9',
       description='Manage projects in a git repository',
       long_description=readme(),
       classifiers=[
