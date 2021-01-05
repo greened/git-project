@@ -44,7 +44,24 @@ import subprocess
 import sys
 import urllib.parse
 
+try:
+    from importlib import metadata
+except ImportError:
+    # Running on pre-3.8 Python; use importlib-metadata package
+    import importlib_metadata as metadata
+
 from .parsermanager import ParserManager
+
+def get_version_string(package):
+    version = metadata.version(package)
+
+    return f'{package} version {version}'
+
+def add_version_argument(parser, package):
+    parser.add_argument('--version',
+                        action='version',
+                        version=get_version_string(package),
+                        help='Print version')
 
 def parse_arguments(git, gitproject, project, plugin_manager, args):
     """Register plugin comand-line arguments.  Parse command-link arguments and
@@ -62,6 +79,9 @@ def parse_arguments(git, gitproject, project, plugin_manager, args):
     parser_manager = ParserManager(gitproject, project)
 
     parser = parser_manager.find_parser('__main__')
+
+    # --version
+    add_version_argument(parser, 'git-project')
 
     command_subparser = parser_manager.add_subparser(parser,
                                                      'command',
