@@ -212,3 +212,28 @@ def test_substitutable_substitute_scope(reset_directory, git):
                                              substitutable.command)
 
     assert command == f'cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}'
+
+def test_substitutable_substitute_formats(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build',
+                             target='debug {options}')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    formats = {
+        'options': 'opt'
+    }
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command,
+                                             formats)
+
+    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make debug opt'

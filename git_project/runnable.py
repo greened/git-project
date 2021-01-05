@@ -45,7 +45,7 @@ class RunnableConfigObject(SubstitutableConfigObject):
         """
         super().__init__(git, section, subsection, ident, **kwargs)
 
-    def substitute_command(self, git, project):
+    def substitute_command(self, git, project, formats=dict()):
         """Given a project, perform variable substitution on the command and return the
         result as a string.
 
@@ -54,9 +54,9 @@ class RunnableConfigObject(SubstitutableConfigObject):
         project: The currently active Project.
 
         """
-        return self.substitute_value(git, project, self.command)
+        return self.substitute_value(git, project, self.command, formats)
 
-    def run(self, git, project, clargs):
+    def run(self, git, project, formats=dict()):
         """Do variable substitution and run the resulting command.
 
         git: An object to query the repository and make config changes.
@@ -64,7 +64,7 @@ class RunnableConfigObject(SubstitutableConfigObject):
         project: The currently active Project.
 
         """
-        command = self.substitute_command(git, project)
+        command = self.substitute_command(git, project, formats)
 
         print(command)
 
