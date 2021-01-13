@@ -19,6 +19,7 @@
 import os
 
 import git_project
+
 from pathlib import Path
 import shutil
 
@@ -691,3 +692,17 @@ def test_git_set_branch_upstream(reset_directory, git):
 
 def test_git_get_curent_branch(reset_directory, git):
     assert git.get_current_branch() == 'master'
+
+def test_git_workarea_is_clean(reset_directory, git):
+    assert git.workarea_is_clean()
+
+    # Remove a file from the index to make it unclean.
+    index = git._repo.index
+    index.read()
+
+    for entry in index:
+        index.remove(entry.path)
+        index.write()
+        break
+
+    assert not git.workarea_is_clean()

@@ -403,6 +403,17 @@ class Git(object):
         """Return whether the configured repository is bare."""
         return self._repo.is_bare
 
+    def workarea_is_clean(self):
+        if self.is_bare_repository():
+            return True
+
+        status = self._repo.status()
+        for filepath, flags in status.items():
+            if flags != pygit2.GIT_STATUS_CURRENT:
+                return False
+
+        return True
+
     def get_working_copy_root(self):
         """Get the root of the current working copy."""
         cwd = Path.cwd().resolve()
