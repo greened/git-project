@@ -561,7 +561,7 @@ def test_git_remote_branch_exists(reset_directory,
     assert git.remote_branch_exists('master', 'origin')
     assert git.remote_branch_exists('pushed', 'origin')
     assert git.remote_branch_exists('notpushed', 'origin')
-    assert not git.remote_branch_exists('merged_remote', 'origin')
+    assert git.remote_branch_exists('merged_remote', 'origin')
     assert not git.remote_branch_exists('merged_local', 'origin')
     assert not git.remote_branch_exists('unmerged', 'origin')
 
@@ -657,8 +657,8 @@ def test_git_fetch_remote(reset_directory,
     assert len(refs) > 0
 
 def test_git_iterbranches(reset_directory, git):
-    branches = [branch for branch in git.iterbranches()]
-    assert branches == ['master',
+    branches = {branch for branch in git.iterbranches()}
+    assert branches == {'master',
                         'merged_local',
                         'merged_remote',
                         'notpushed',
@@ -666,8 +666,9 @@ def test_git_iterbranches(reset_directory, git):
                         'unmerged',
                         'origin/HEAD',
                         'origin/master',
+                        'origin/merged_remote',
                         'origin/notpushed',
-                        'origin/pushed']
+                        'origin/pushed'}
 
 def test_git_get_branch_upstream(reset_directory, git):
     master_upstream = git.get_branch_upstream('master')
