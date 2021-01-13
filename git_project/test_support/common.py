@@ -393,6 +393,7 @@ class GitProjectRunner(object):
         self.command = 'git-project'
         self.runner = runner
         self.directory = directory
+        self.expect_fail = False
 
     def chdir(self, path):
         self.directory = str(path)
@@ -400,7 +401,10 @@ class GitProjectRunner(object):
     def run(self, expected_stdout_regexp, expected_stderr_regexp, *args):
         result = self.runner.run(self.command, *args, cwd=self.directory)
 
-        assert result.success
+        if self.expect_fail:
+            assert not result.success
+        else:
+            assert result.success
 
         stdout_re = re.compile(expected_stdout_regexp, re.M)
         stderr_re = re.compile(expected_stderr_regexp, re.M)
