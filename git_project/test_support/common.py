@@ -125,14 +125,34 @@ class PluginManagerMock(object):
         for name, cls in self.plugins:
             yield PluginMock(name, cls)
 
-def create_commit(repo, ref, parents, text):
+def add_blob(repo, parents, text):
+    # For now we don't do merge commits.
+    assert len(parents) <= 1
+
+    if len(parents) > 0:
+        parent_id = parents[0]
+        parent_commit = repo.get(parent_id)
+        builder = repo.TreeBuilder(parent_commit.tree)
+    else:
+        builder = repo.TreeBuilder()
+
     boid = repo.create_blob(f'{text}\n')
-    builder = repo.TreeBuilder()
+
     builder.insert(f'{text}.txt', boid, pygit2.GIT_FILEMODE_BLOB)
+
     toid = builder.write()
+
+    return toid
+
+def create_commit(repo, ref, parents, text):
+    # For now we don't do merge commits.
+    assert len(parents) <= 1
+
+    toid = add_blob(repo, parents, text)
 
     author = pygit2.Signature('Alice Author', 'alice@authors.tld')
     committer = author
+
     return repo.create_commit(
         ref, # the name of the reference to update
         author, committer, f'Say {text}\n\n{text} ',
