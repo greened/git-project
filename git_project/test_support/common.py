@@ -334,10 +334,11 @@ def init_local_remote(remote_path, clone_path):
 
     return local_clone
 
-@pytest.fixture(scope="package")
-def orig_repository(tmp_path_factory):
-    remote_path = tmp_path_factory.mktemp('test_repo.git')
-    local_path = tmp_path_factory.mktemp('test_repo_local.git')
+@pytest.fixture(scope="function")
+def orig_repository(request,
+                    tmp_path_factory):
+    remote_path = tmp_path_factory.mktemp(f'orig_remote_{request.node.name}.git')
+    local_path = tmp_path_factory.mktemp(f'temp_local_{request.node.name}.git')
     yield from init_remote(remote_path, local_path)
 
 # @pytest.fixture(scope="function")
