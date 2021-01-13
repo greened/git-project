@@ -171,10 +171,19 @@ def init_remote(remote_path, local_path):
     commit = local_repo.revparse_single('HEAD')
 
     local_repo.branches.create('pushed', commit)
-    create_commit(local_repo, 'refs/heads/pushed', [commit.id], 'Pushed')
+    pushed_commit_oid = create_commit(local_repo,
+                                      'refs/heads/pushed',
+                                      [commit.id],
+                                      'Pushed')
     # master
     #       \
     #        `---pushed
+
+    pushed_commit = local_repo[pushed_commit_oid]
+    local_repo.branches.create('notpushed', pushed_commit)
+    # master
+    #       \
+    #        `---pushed, notpushed
 
     local_repo.remotes.add_push('origin', '+refs/heads/*:refs/remotes/origin/*')
 
@@ -184,64 +193,23 @@ def init_remote(remote_path, local_path):
     merged_remote_coid = create_commit(local_repo, 'refs/heads/master', [commit.id], 'MergedRemote')
     # -------master
     #    \
-    #     `---pushed
+    #     `---pushed, notpushed
 
     commit = local_repo.get(merged_remote_coid)
 
     local_repo.branches.create('merged_remote', commit)
     # -------master, merged_remote
     #    \
-    #     `---pushed
+    #     `---pushed, notpushed
 
-    local_repo.remotes['origin'].push(['refs/heads/master', 'refs/heads/pushed'])
-    # -------master, merged_remote, origin/master
+    local_repo.remotes['origin'].push(['refs/heads/master',
+                                       'refs/heads/pushed',
+                                       'refs/heads/notpushed',
+                                       'refs/heads/merged_remote'])
+    # -------master, merged_remote, origin/master, origin/merged_remote
     #    \
-    #     `---pushed, origin/pushed
+    #     `---pushed, notpushed, origin/notpushed, origin/pushed
 
-    local_repo.branches.create('notpushed', commit)
-    local_repo.remotes['origin'].push(['refs/heads/notpushed'])
-    create_commit(local_repo, 'refs/heads/notpushed', [commit.id], 'NotPushed')
-    # -------master, merged_remote, origin/master
-    #    \
-    #     `---pushed, origin/pushed, origin/notpushed
-    #               \
-    #                `---notpushed
-
-    commit = local_repo.revparse_single('refs/heads/master')
-
-    merged_local_coid = create_commit(local_repo,
-                                      'refs/heads/master',
-                                      [commit.id],
-                                      'MergedLocal')
-    commit = local_repo.get(merged_local_coid)
-
-    local_repo.branches.create('merged_local', commit)
-    # -------merged_remote, origin/master
-    #   |                                \
-    #   |                                 `---master, merged_local
-    #    \
-    #     `---pushed, origin/pushed, origin/notpushed
-    #               \
-    #                `---notpushed
-
-    commit = local_repo.revparse_single('refs/heads/merged_local')
-
-    commit = local_repo.revparse_single('refs/heads/master')
-
-    unmerged_branch = local_repo.branches.create('unmerged', commit)
-
-    unmerged_coid = create_commit(local_repo,
-                                  'refs/heads/unmerged',
-                                  [commit.id],
-                                  'Unmerged')
-    # -------merged_remote, origin/master
-    #   |                                \
-    #   |                                 `---master, merged_local
-    #   |                                                         \
-    #    \                                                         `---unmerged
-    #     `---pushed, origin/pushed, origin/notpushed
-    #               \
-    #                `---notpushed
 
     yield remote_repo
 
@@ -252,27 +220,32 @@ def init_clone(url, path):
     origin = repo.remotes['origin']
     origin.fetch()
 
-    # -------master, origin/master
+    # -------master, origin/master, origin/merged_remote
     #    \
-    #     `---origin/pushed, origin/notpushed
+    #     `---origin/notpushed, origin/pushed
 
     commit = repo.revparse_single('refs/remotes/origin/master')
     repo.branches.create('merged_remote', commit)
-    # -------master, merged_remote, origin/master
+    # -------master, merged_remote, origin/master, origin/merged_remote
     #    \
-    #     `---origin/pushed, origin/notpushed
+    #     `---origin/notpushed, origin/pushed
 
-    commit = repo.revparse_single('refs/remotes/origin/pushed')
-    repo.branches.create('pushed', commit)
-    # -------master, merged_remote, origin/master
+    pushed_commit = repo.revparse_single('refs/remotes/origin/pushed')
+    repo.branches.create('pushed', pushed_commit)
+    # -------master, merged_remote, origin/master, origin/merged_remote
     #    \
-    #     `---pushed, origin/pushed, origin/notpushed
+    #     `---origin/notpushed, origin/pushed, pushed
 
-    repo.branches.create('notpushed', commit)
-    create_commit(repo, 'refs/heads/notpushed', [commit.id], 'NotPushed')
+    notpushed_commit = repo.revparse_single('refs/remotes/origin/notpushed')
+    repo.branches.create('notpushed', notpushed_commit)
+
+    notpushed_coid = create_commit(repo,
+                                   'refs/heads/notpushed',
+                                   [pushed_commit.id],
+                                   'NotPushed')
     # -------master, merged_remote, origin/master
     #    \
-    #     `---pushed, origin/pushed, origin/notpushed
+    #     `---origin/notpushed, origin/pushed, pushed
     #               \
     #                `---notpushed
 
@@ -282,6 +255,7 @@ def init_clone(url, path):
                                       'refs/heads/master',
                                       [commit.id],
                                       'MergedLocal')
+    repo.checkout('refs/heads/master')
     commit = repo.get(merged_local_coid)
 
     repo.branches.create('merged_local', commit)
@@ -289,19 +263,17 @@ def init_clone(url, path):
     #   |                                \
     #   |                                 `---master, merged_local
     #    \
-    #     `---pushed, origin/pushed, origin/notpushed
+    #     `---pushed, origin/pushed
     #               \
     #                `---notpushed
 
-    commit = repo.revparse_single('refs/heads/merged_local')
+    master_commit = repo.revparse_single('refs/heads/master')
 
-    commit = repo.revparse_single('refs/heads/master')
-
-    unmerged_branch = repo.branches.create('unmerged', commit)
+    unmerged_branch = repo.branches.create('unmerged', master_commit)
 
     unmerged_coid = create_commit(repo,
                                   'refs/heads/unmerged',
-                                  [commit.id],
+                                  [master_commit.id],
                                   'Unmerged')
     # -------merged_remote, origin/master
     #   |                                \
