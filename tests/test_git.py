@@ -706,3 +706,6 @@ def test_git_workarea_is_clean(reset_directory, git):
         break
 
     assert not git.workarea_is_clean()
+
+def test_git_get_gitdir(reset_directory, git):
+    assert Path(git.get_gitdir()).name == '.git'

@@ -414,6 +414,10 @@ class Git(object):
 
         return True
 
+    def get_gitdir(self):
+        """Get the GITDIR directory."""
+        return self._repo.path
+
     def get_working_copy_root(self):
         """Get the root of the current working copy."""
         cwd = Path.cwd().resolve()
