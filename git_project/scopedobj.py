@@ -189,13 +189,11 @@ class ScopedConfigObject(ConfigObject):
 
         # See if the child is what we're looking for.  This effectively starts
         # the search at the topmost scope.
-        print(f'get_scope {subsection}')
         try:
             scope = self.unscoped('_child').get_scope()
 
             if scope:
                 # It was some child.
-                print(f'Found child {scope.get_ident()}')
                 return scope
         except AttributeError:
             # No child scope
@@ -203,7 +201,6 @@ class ScopedConfigObject(ConfigObject):
 
         if self.get_subsection() == subsection:
             # It's us!
-            print(f'Found self {self.get_ident()}')
             return self
 
         # Not us, try lower scopes.
