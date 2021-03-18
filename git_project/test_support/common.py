@@ -398,8 +398,8 @@ class GitProjectRunner(object):
     def chdir(self, path):
         self.directory = str(path)
 
-    def run(self, expected_stdout_regexp, expected_stderr_regexp, *args):
-        result = self.runner.run(self.command, *args, cwd=self.directory)
+    def run(self, expected_stdout_regexp, expected_stderr_regexp, *args, **kwargs):
+        result = self.runner.run(self.command, *args, cwd=self.directory, **kwargs)
 
         if self.expect_fail:
             assert not result.success
