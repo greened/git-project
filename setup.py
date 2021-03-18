@@ -43,6 +43,7 @@ setup(name='git_project',
       install_requires = [
           'pygit2',
       ],
+      python_requires='~=3.8',
       entry_points = {
           'console_scripts': ['git-project=git_project.main:main'],
       },
