@@ -28,6 +28,15 @@ import urllib
 from .exception import GitProjectException
 from .shell import capture_command
 
+# Python 3.9 things so we don't actually need 3.9.
+
+def _is_relative_to(path, other):
+    try:
+        path.relative_to(other)
+        return True
+    except ValueError:
+        return False
+
 # Git commands
 #
 class Git(object):
@@ -426,13 +435,13 @@ class Git(object):
         for name in self._repo.list_worktrees():
             worktree = self._repo.lookup_worktree(name)
             path = Path(worktree.path).resolve()
-            if path == cwd or cwd.is_relative_to(path):
+            if path == cwd or _is_relative_to(cwd, path):
                 return str(path)
 
         # See if we have a GITDIR somewhere along the way.
         gitdir = Path(self._repo.path).resolve()
         while True:
-            if gitdir != cwd and gitdir.is_relative_to(cwd):
+            if gitdir != cwd and _is_relative_to(gitdir, cwd):
                 return cwd
             parent = cwd.parent
             if parent == cwd:
