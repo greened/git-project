@@ -143,3 +143,14 @@ def test_project_prune_branch(reset_directory,
     project.prune_branch('pushed')
 
     assert not project._git.remote_branch_exists('pushed', 'origin')
+
+def test_project_get_in_repository_non_default_main(git):
+    git.create_branch('newmain', 'master')
+    git.checkout('newmain')
+    for refname in git.iterrefnames(['refs/heads']):
+        if refname != 'refs/heads/newmain':
+            git.delete_branch(refname)
+
+    project = git_project.Project.get(git, 'project')
+
+    assert project.branch == 'newmain'
