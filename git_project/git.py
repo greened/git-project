@@ -412,6 +412,31 @@ class Git(object):
         """Return whether the configured repository is bare."""
         return self._repo.is_bare
 
+    def get_main_branch(self):
+        """Return the refname of the main branch.  Return none if we cannot determine a
+        unique main branch.
+
+        """
+        main = ''
+        nonmain_branches = []
+        for refname in self.iterrefnames(['refs/heads']):
+            if refname == 'refs/heads/main':
+                main = refname
+            elif refname == 'refs/heads/master':
+                if not main:
+                    main = refname
+            else:
+                nonmain_branches.append(refname)
+
+        if not main:
+            if len(nonmain_branches) == 1:
+                main = nonmain_branches[0]
+
+        if main:
+            return self.branch_name_to_refname(main)
+
+        return None
+
     def workarea_is_clean(self):
         if self.is_bare_repository():
             return True

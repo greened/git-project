@@ -71,7 +71,9 @@ class Project(ScopedConfigObject):
     def set_defaults(self):
         if self._git.has_repo():
             if not self.has_item('branch'):
-                self.branch = 'master'
+                main = self._git.get_main_branch()
+                if main:
+                    self.branch = self._git.refname_to_branch_name(main)
             if not self.has_item('remote'):
                 self.remote = 'origin'
 

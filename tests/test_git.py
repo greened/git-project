@@ -709,3 +709,32 @@ def test_git_workarea_is_clean(reset_directory, git):
 
 def test_git_get_gitdir(reset_directory, git):
     assert Path(git.get_gitdir()).name == '.git'
+
+def test_git_get_main_branch(reset_directory, git):
+    assert git.get_main_branch() == 'refs/heads/master'
+
+def test_git_get_main_branch_master_main(reset_directory, git):
+    git.create_branch('main', 'master')
+    assert git.get_main_branch() == 'refs/heads/main'
+
+def test_git_get_main_branch_main(reset_directory, git):
+    git.create_branch('main', 'master')
+    git.checkout('main')
+    git.delete_branch('master')
+    assert git.get_main_branch() == 'refs/heads/main'
+
+def test_git_get_main_branch_one_unique(reset_directory, git):
+    git.create_branch('newmain', 'master')
+    git.checkout('newmain')
+    for refname in git.iterrefnames(['refs/heads']):
+        if refname != 'refs/heads/newmain':
+            git.delete_branch(refname)
+    assert git.get_main_branch() == 'refs/heads/newmain'
+
+def test_git_get_main_branch_no_unique(reset_directory, git):
+    git.create_branch('newmain', 'master')
+    git.checkout('newmain')
+    git.delete_branch('master')
+    git.create_branch('other', 'newmain')
+
+    assert git.get_main_branch() is None
