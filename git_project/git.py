@@ -452,6 +452,18 @@ class Git(object):
         """Get the GITDIR directory."""
         return self._repo.path
 
+    def get_git_common_dir(self):
+        """Get the GIT_COMMON_DIR directory.
+
+        NOTE: This assumes that worktree paths are in .git/worktrees/<name>
+
+        """
+        gitdir = Path(self._repo.path)
+        while gitdir.name != '.git':
+            gitdir = gitdir.parent
+
+        return str(gitdir)
+
     def get_working_copy_root(self):
         """Get the root of the current working copy."""
         cwd = Path.cwd().resolve()

@@ -738,3 +738,16 @@ def test_git_get_main_branch_no_unique(reset_directory, git):
     git.create_branch('other', 'newmain')
 
     assert git.get_main_branch() is None
+
+def test_git_get_git_common_dir(reset_directory, git):
+    assert Path(git.get_git_common_dir()).name == '.git'
+
+def test_git_get_git_common_dir_worktree(reset_directory, git):
+    git.create_branch('test', 'master')
+    git.add_worktree('test', '../test', 'test')
+
+    os.chdir('../test')
+
+    git = git_project.Git()
+
+    assert Path(git.get_git_common_dir()).name == '.git'
