@@ -66,6 +66,7 @@ class SubstitutableConfigObject(ConfigObject):
 
         formats['project'] = project.get_section()
         formats['gitdir'] = git.get_gitdir()
+        formats['git_common_dir'] = git.get_git_common_dir()
 
         if not found_path:
             # We haven't found a worktree or other construct to give us a path,
