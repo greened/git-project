@@ -736,6 +736,9 @@ class Git(object):
 
         """
         ref = self.committish_to_ref(committish)
+        parent_path = Path(path).parent
+        if not parent_path.exists():
+            os.makedirs(parent_path)
         self._repo.add_worktree(name, path, ref)
 
     def prune_worktree(self, name):

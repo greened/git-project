@@ -751,3 +751,35 @@ def test_git_get_git_common_dir_worktree(reset_directory, git):
     git = git_project.Git()
 
     assert Path(git.get_git_common_dir()).name == '.git'
+
+def test_git_worktree_subdir(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    # Create a branch for the worktree.
+    commit, ref = git._repo.resolve_refish('HEAD')
+    branch = git._repo.branches.create('user/test-wt', commit)
+
+    worktree_checkout_path = Path.cwd() / '..' / '..' / 'user' / 'test-wt'
+
+    git.add_worktree('test-wt', str(worktree_checkout_path), 'user/test-wt')
+
+    worktree_path = Path(local_repository.path) / 'worktrees' / 'test-wt'
+
+    assert os.path.exists(worktree_path)
+    assert git.branch_name_to_refname('user/test-wt') == 'refs/heads/user/test-wt'
+
+    try:
+        git.prune_worktree('test-wt')
+        assert False, 'Pruned a worktree when should not have'
+    except:
+        pass
+
+    shutil.rmtree(worktree_checkout_path)
+
+    git.prune_worktree('test-wt')
+
+    assert not os.path.exists('user/test-wt')
