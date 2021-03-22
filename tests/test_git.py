@@ -770,7 +770,9 @@ def test_git_worktree_subdir(reset_directory, local_repository):
     worktree_path = Path(local_repository.path) / 'worktrees' / 'test-wt'
 
     assert os.path.exists(worktree_path)
-    assert git.branch_name_to_refname('user/test-wt') == 'refs/heads/user/test-wt'
+    os.chdir(worktree_path)
+    wtgit = git_project.Git()
+    assert wtgit.get_current_branch() == 'user/test-wt'
 
     try:
         git.prune_worktree('test-wt')
