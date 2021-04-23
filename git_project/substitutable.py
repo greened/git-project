@@ -57,12 +57,20 @@ class SubstitutableConfigObject(ConfigObject):
 
         """
         found_path = False
+
+        # Substitute for project-global values.
         for key, value in project.iteritems():
             if key == 'path':
                 found_path = True
             if key == self.get_subsection():
                 value = self.get_ident()
             formats[key] = value
+
+        # Substitute for values in self.
+        for key, value in self.iteritems():
+           if key == 'path':
+               found_path = True
+           formats[key] = value
 
         formats['project'] = project.get_section()
         formats['gitdir'] = git.get_gitdir()

@@ -287,3 +287,21 @@ def test_substitutable_substitute_git_common_dir(reset_directory, git):
                                              formats)
 
     assert command == f'cd {git.get_git_common_dir()}/../../path/to/build/{git.get_current_branch()} && make debug opt'
+
+def test_substitutable_substitute_substitutable_item(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             'echo {description}')
+
+    assert command == f'echo {substitutable.description}'
