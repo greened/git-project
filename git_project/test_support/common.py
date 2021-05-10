@@ -251,6 +251,14 @@ def init_clone(url, path):
 
     commit = repo.revparse_single('refs/heads/master')
 
+    repo.branches.create('pushed_indirectly', commit)
+
+    # -------master, merged_remote, origin/master, pushed_indirectly
+    #    \
+    #     `---origin/notpushed, origin/pushed, pushed
+    #               \
+    #                `---notpushed
+
     merged_local_coid = create_commit(repo,
                                       'refs/heads/master',
                                       [commit.id],
@@ -259,7 +267,7 @@ def init_clone(url, path):
     commit = repo.get(merged_local_coid)
 
     repo.branches.create('merged_local', commit)
-    # -------merged_remote, origin/master
+    # -------merged_remote, origin/master, pushed_indirectly
     #   |                                \
     #   |                                 `---master, merged_local
     #    \
