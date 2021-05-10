@@ -157,9 +157,16 @@ class Project(ScopedConfigObject):
         for target in self.iterbranches():
             target_refname = self._git.committish_to_refname(target)
             for remote in self.iterremotes():
-                target_remote_refname = self._git.get_remote_push_refname(target_refname, remote)
+                target_remote_refname = (
+                    self._git.get_remote_push_refname(target_refname, remote)
+                )
                 if not target_remote_refname:
-                    continue
+                    target_remote_refname = (
+                        self._git.get_remote_fetch_refname(target_refname,
+                                                           remote)
+                    )
+                    if not target_remote_refname:
+                        continue
                 if self._git.refname_is_merged(refname, target_remote_refname):
                     return True
         return False

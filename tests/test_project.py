@@ -88,6 +88,7 @@ def test_project_iterrefnames(project):
     assert refs == {'refs/heads/master',
                     'refs/remotes/origin/master',
                     'refs/heads/pushed',
+                    'refs/heads/pushed_indirectly',
                     'refs/remotes/origin/pushed'}
 
 def test_project_branch_is_merged(project):
@@ -154,3 +155,6 @@ def test_project_get_in_repository_non_default_main(git):
     project = git_project.Project.get(git, 'project')
 
     assert project.branch == 'newmain'
+
+def test_project_branch_is_pushed_indirectly(project):
+    assert project.branch_is_pushed('pushed_indirectly')
