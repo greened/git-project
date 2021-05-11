@@ -129,30 +129,12 @@ class Project(ScopedConfigObject):
 
     # Branch info.
 
-    def branch_is_merged(self, committish):
-        """Return whether the given committish is merged to a project branch.
+    def branch_is_merged_remotely(self, committish):
+        """Return whether the given committish is merged to a remote project branch.
 
-        committish: The committish to check
-
-        """
-        for branch in self.iterbranches():
-            if self._git.refname_is_merged(committish, branch):
-                return True
-        return False
-
-    def branch_is_pushed(self, committish):
-        """Return whether a given committish is pushed to the remote.  This tests
-        whether the commit at committish is pushed.  This will return true if
-        the committish itself is pushed or if the given committish is merged to
-        a project branch and that project branch is pushed.
-
-        committish: The committish to check.
+        committish: The committish to checl
 
         """
-        for remote in self.iterremotes():
-            if self._git.committish_is_pushed(committish, remote):
-                return True
-        # Not directly pushed, see if it is pushed as part of a merge.
         refname = self._git.committish_to_refname(committish)
         for target in self.iterbranches():
             target_refname = self._git.committish_to_refname(target)
@@ -170,6 +152,35 @@ class Project(ScopedConfigObject):
                 if self._git.refname_is_merged(refname, target_remote_refname):
                     return True
         return False
+
+    def branch_is_merged(self, committish):
+        """Return whether the given committish is merged to a project branch.
+
+        committish: The committish to check
+
+        """
+        for branch in self.iterbranches():
+            print(f'Check {committish} merged to {branch}')
+            if self._git.refname_is_merged(committish, branch):
+                print(f'{committish} is merged to {branch}')
+                return True
+        # See if it might be merged (and therefore pushed) on the remote.
+        return self.branch_is_merged_remotely(committish)
+
+    def branch_is_pushed(self, committish):
+        """Return whether a given committish is pushed to the remote.  This tests
+        whether the commit at committish is pushed.  This will return true if
+        the committish itself is pushed or if the given committish is merged to
+        a project branch and that project branch is pushed.
+
+        committish: The committish to check.
+
+        """
+        for remote in self.iterremotes():
+            if self._git.committish_is_pushed(committish, remote):
+                return True
+        # Not directly pushed, see if it is pushed as part of a merge.
+        return self.branch_is_merged_remotely(committish)
 
     # Higher-level commands
 
