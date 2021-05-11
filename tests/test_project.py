@@ -158,3 +158,6 @@ def test_project_get_in_repository_non_default_main(git):
 
 def test_project_branch_is_pushed_indirectly(project):
     assert project.branch_is_pushed('pushed_indirectly')
+
+def test_project_branch_is_merged_indirectly(project):
+    assert project.branch_is_merged('pushed_indirectly')

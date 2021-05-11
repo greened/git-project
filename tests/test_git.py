@@ -672,6 +672,7 @@ def test_git_iterbranches(reset_directory, git):
                         'origin/master',
                         'origin/merged_remote',
                         'origin/notpushed',
+                        'origin/old_master',
                         'origin/pushed'}
 
 def test_git_get_branch_upstream(reset_directory, git):
