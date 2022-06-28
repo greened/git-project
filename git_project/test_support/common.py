@@ -205,7 +205,11 @@ def init_remote(remote_path, local_path):
 
     commit = local_repo.revparse_single('refs/heads/master')
     merged_remote_coid = create_commit(local_repo, 'refs/heads/master', [commit.id], 'MergedRemote')
-    # -------merged_remote, old_master--master
+    commit = local_repo.get(merged_remote_coid)
+    local_repo.branches.create('remote_only', commit)
+    commit = local_repo.revparse_single('refs/heads/remote_only')
+    merged_remote_coid = create_commit(local_repo, 'refs/heads/remote_only', [commit.id], 'MergedRemote')
+    # -------merged_remote, old_master--master--remote_only
     #    \
     #     `---pushed, notpushed
 
@@ -213,8 +217,9 @@ def init_remote(remote_path, local_path):
                                        'refs/heads/old_master',
                                        'refs/heads/pushed',
                                        'refs/heads/notpushed',
-                                       'refs/heads/merged_remote'])
-    # -------merged_remote, old_master, origin/merged_remote, origin/old_master--master, origin/master
+                                       'refs/heads/merged_remote',
+                                       'refs/heads/remote_only'])
+    # -------merged_remote, old_master, origin/merged_remote, origin/old_master--master, origin/master--origin/remote_only
     #    \
     #     `---pushed, notpushed, origin/notpushed, origin/pushed
 
@@ -228,19 +233,19 @@ def init_clone(url, path):
     origin = repo.remotes['origin']
     origin.fetch()
 
-    # -------origin/old_master, origin/merged_remote--master, origin/master
+    # -------origin/old_master, origin/merged_remote--origin/master--origin/remote_only
     #    \
     #     `---origin/notpushed, origin/pushed
 
     commit = repo.revparse_single('refs/remotes/origin/old_master')
     repo.branches.create('merged_remote', commit)
-    # -------merged_remote, origin/old_master, origin/merged_remote--master, origin/master
+    # -------merged_remote, origin/old_master, origin/merged_remote--origin/master--origin/remote_only
     #    \
     #     `---origin/notpushed, origin/pushed
 
     pushed_commit = repo.revparse_single('refs/remotes/origin/pushed')
     repo.branches.create('pushed', pushed_commit)
-    # -------merged_remote, origin/old_master, origin/merged_remote--master, origin/master
+    # -------merged_remote, origin/old_master, origin/merged_remote--origin/master--origin/remote_only
     #    \
     #     `---origin/notpushed, origin/pushed, pushed
 
@@ -251,7 +256,7 @@ def init_clone(url, path):
                                    'refs/heads/notpushed',
                                    [pushed_commit.id],
                                    'NotPushed')
-    # -------merged_remote, origin/old_master--master, origin/master
+    # -------merged_remote, origin/old_master, origin/merged_remote--origin/master--origin/remote_only
     #    \
     #     `---origin/notpushed, origin/pushed, pushed
     #               \
@@ -265,7 +270,7 @@ def init_clone(url, path):
     repo.branches.create('master', commit)
     master = repo.branches['master']
     master.upstream = repo.branches['origin/master']
-    # -------merged_remote, origin/old_master, master--origin/master
+    # -------merged_remote, origin/old_master, master--origin/master--origin/remote_only
     #    \
     #     `---origin/notpushed, origin/pushed, pushed
     #               \
@@ -273,7 +278,7 @@ def init_clone(url, path):
 
     commit = repo.revparse_single('refs/remotes/origin/master')
     repo.branches.create('pushed_indirectly', commit)
-    # -------merged_remote, origin/old_master, master--origin/master, pushed_indirectly
+    # -------merged_remote, origin/old_master, master--origin/master, pushed_indirectly--origin/remote_only
     #    \
     #     `---origin/notpushed, origin/pushed, pushed
     #               \
@@ -288,7 +293,7 @@ def init_clone(url, path):
     commit = repo.get(merged_local_coid)
 
     repo.branches.create('merged_local', commit)
-    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly
+    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only
     #   |                                \
     #   |                                 `---master, merged_local
     #    \
@@ -304,7 +309,19 @@ def init_clone(url, path):
                                   'refs/heads/unmerged',
                                   [master_commit.id],
                                   'Unmerged')
-    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly
+    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only
+    #   |                                \
+    #   |                                 `---master, merged_local--unmerged
+    #    \
+    #     `---pushed, origin/pushed
+    #               \
+    #                `---notpushed
+
+    remote_only_commit = repo.revparse_single('refs/remotes/origin/remote_only')
+
+    merged_remote_only_branch = repo.branches.create('merged_remote_only', remote_only_commit)
+
+    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only, merged_remote_only
     #   |                                \
     #   |                                 `---master, merged_local--unmerged
     #    \
@@ -399,7 +416,9 @@ def gitproject(request, git):
 @pytest.fixture(scope="function")
 def project(request, git):
     project_name = 'project'
-    return git_project.Project.get(git, project_name)
+    project = git_project.Project.get(git, project_name)
+    project.add_branch('remote_only')
+    return project
 
 @pytest.fixture(scope="function")
 def parser_manager(request, gitproject, project):

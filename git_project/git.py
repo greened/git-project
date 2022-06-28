@@ -644,6 +644,10 @@ class Git(object):
         the given target committish.
 
         """
+        target_branch = self.refname_to_branch_name(target)
+        if target_branch not in self._repo.branches:
+            return False
+
         ref_oid = self.get_committish_oid(refname)
         target_oid = self.get_committish_oid(target)
         return ref_oid == target_oid or self._repo.descendant_of(target_oid, ref_oid)

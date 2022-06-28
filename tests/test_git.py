@@ -377,6 +377,8 @@ def test_git_refname_is_merged(reset_directory, local_repository):
                                  'refs/remotes/origin/master')
     assert not git.refname_is_merged('refs/heads/notpushed',
                                      'refs/remotes/origin/notpushed')
+    assert git.refname_is_merged('merged_local', 'master')
+    assert not git.refname_is_merged('merged_local', 'nonexistent')
 
 def test_git_iterrefnames(reset_directory, local_repository):
     os.chdir(local_repository.path)
@@ -389,6 +391,7 @@ def test_git_iterrefnames(reset_directory, local_repository):
             ['refs/heads/master',
              'refs/heads/merged_local',
              'refs/heads/merged_remote',
+             'refs/heads/merged_remote_only',
              'refs/heads/notpushed',
              'refs/heads/pushed',
              'refs/heads/pushed_indirectly',
@@ -405,6 +408,7 @@ def test_git_iterrefnames_str(reset_directory, local_repository):
             ['refs/heads/master',
              'refs/heads/merged_local',
              'refs/heads/merged_remote',
+             'refs/heads/merged_remote_only',
              'refs/heads/notpushed',
              'refs/heads/pushed',
              'refs/heads/pushed_indirectly',
@@ -664,6 +668,7 @@ def test_git_iterbranches(reset_directory, git):
     assert branches == {'master',
                         'merged_local',
                         'merged_remote',
+                        'merged_remote_only',
                         'notpushed',
                         'pushed',
                         'pushed_indirectly',
@@ -673,7 +678,8 @@ def test_git_iterbranches(reset_directory, git):
                         'origin/merged_remote',
                         'origin/notpushed',
                         'origin/old_master',
-                        'origin/pushed'}
+                        'origin/pushed',
+                        'origin/remote_only'}
 
 def test_git_get_branch_upstream(reset_directory, git):
     master_upstream = git.get_branch_upstream('master')
