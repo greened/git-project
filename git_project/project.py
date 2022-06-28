@@ -137,7 +137,9 @@ class Project(ScopedConfigObject):
         """
         refname = self._git.committish_to_refname(committish)
         for target in self.iterbranches():
-            target_refname = self._git.committish_to_refname(target)
+            target_refname = target
+            if target in self._git.iterbranches():
+                target_refname = self._git.committish_to_refname(target)
             for remote in self.iterremotes():
                 target_remote_refname = (
                     self._git.get_remote_push_refname(target_refname, remote)
@@ -148,7 +150,7 @@ class Project(ScopedConfigObject):
                                                            remote)
                     )
                     if not target_remote_refname:
-                        continue
+                        target_remote_refname = f'refs/remotes/{remote}/{target_refname}'
                 if self._git.refname_is_merged(refname, target_remote_refname):
                     return True
         return False
@@ -160,9 +162,7 @@ class Project(ScopedConfigObject):
 
         """
         for branch in self.iterbranches():
-            print(f'Check {committish} merged to {branch}')
             if self._git.refname_is_merged(committish, branch):
-                print(f'{committish} is merged to {branch}')
                 return True
         # See if it might be merged (and therefore pushed) on the remote.
         return self.branch_is_merged_remotely(committish)

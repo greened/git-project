@@ -64,20 +64,20 @@ def test_project_add_remote(project):
 def test_project_add_branch(project):
     branches = {branch for branch in project.iterbranches()}
 
-    assert branches == {'master'}
+    assert branches == {'master', 'remote_only'}
 
     project.add_branch('project')
 
     branches = {branch for branch in project.iterbranches()}
 
-    assert branches == {'master', 'project'}
+    assert branches == {'master', 'project', 'remote_only'}
 
 def test_project_iterrefnames(project):
     project.add_branch('pushed')
 
     branches = {branch for branch in project.iterbranches()}
 
-    assert branches == {'master', 'pushed'}
+    assert branches == {'master', 'pushed', 'remote_only'}
 
     remotes = {remote for remote in project.iterremotes()}
 
@@ -89,7 +89,8 @@ def test_project_iterrefnames(project):
                     'refs/remotes/origin/master',
                     'refs/heads/pushed',
                     'refs/heads/pushed_indirectly',
-                    'refs/remotes/origin/pushed'}
+                    'refs/remotes/origin/pushed',
+                    'refs/remotes/origin/remote_only'}
 
 def test_project_branch_is_merged(project):
     assert project.branch_is_merged('master')
@@ -98,6 +99,8 @@ def test_project_branch_is_merged(project):
     assert project.branch_is_merged('merged_remote')
     assert project.branch_is_merged('merged_local')
     assert not project.branch_is_merged('unmerged')
+    assert project.branch_is_merged('merged_remote')
+    assert project.branch_is_merged('merged_remote_only')
 
 def test_project_branch_is_pushed(project):
     assert not project.branch_is_pushed('master')
@@ -106,6 +109,7 @@ def test_project_branch_is_pushed(project):
     assert project.branch_is_pushed('merged_remote')
     assert not project.branch_is_pushed('merged_local')
     assert not project.branch_is_pushed('unmerged')
+    assert project.branch_is_pushed('merged_remote_only')
 
 def test_project_prune_branch(reset_directory,
                               remote_repository,
