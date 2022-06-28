@@ -28,10 +28,12 @@ class ParserManager(object):
 
     """
     class Parser(object):
-        """A wrapper for an argparse parser that tracks any subparsers added to it."""
+        """A wrapper for an argparse parser that tracks any subparsers added to
+        it."""
+
         class Subparser(object):
             """A wrapper for an argparse subparser that tracks any parsers added to it."""
-            def __init__(self, key, subparser):
+            def __init__(self, key, parent, subparser):
                 """Subparser constructor.
 
                 key: The name of this Subparser
@@ -40,6 +42,7 @@ class ParserManager(object):
 
                 """
                 self.key = key
+                self.parent_parser = parent
                 self.subparser = subparser
                 self.parsers = []
 
@@ -79,6 +82,13 @@ class ParserManager(object):
                         return found
                 return None
 
+        class Argument(object):
+            def __init__(self, name, aliases, has_value, desc):
+                self.name = name
+                self.aliases = aliases
+                self.has_value = has_value
+                self.description = desc
+
         def __init__(self, key, parser):
             """Parser constructor.
 
@@ -90,6 +100,47 @@ class ParserManager(object):
             self.key = key
             self.parser = parser
             self.subparsers = []
+            self.positional_arguments = []
+            self.optional_arguments = []
+            self.command_arguments = []
+
+            # Add an option to dump machine-readable option information.
+            ActionClass = type(key + "Action", (argparse.Action, ), {
+                'parser': self
+            })
+
+            def construct(self, option_strings, dest, nargs=None, **kwargs):
+                super(ActionClass, self).__init__(option_strings,
+                                                  dest,
+                                                  nargs=nargs,
+                                                  **kwargs)
+
+            def call(self, parser, namespace, values, option_string=None):
+                parser = self.parser
+                print('COMMANDS:')
+                for command in parser.command_arguments:
+                    print(f'{command.name}:{command.description}')
+
+                print('POSITIONALS:')
+                for positional in parser.positional_arguments:
+                    print(f'{positional.name}:'
+                          f'{positional.description}')
+
+                print('OPTIONALS:')
+                for optional in parser.optional_arguments:
+                    print(f'{optional.name}:'
+                          f'{" ".join(optional.aliases)}:'
+                          f'{optional.has_value}:'
+                          f'{optional.description}')
+                sys.exit(0)
+
+            ActionClass.__init__ = construct
+            ActionClass.__call__ = call
+
+            parser.add_argument('--menu',
+                                nargs='?',
+                                action=ActionClass,
+                                help='Dump machine-readable help')
 
         def _add_subparser(self, subparser):
             """Add a subparser as a child of this parser.
@@ -139,6 +190,22 @@ class ParserManager(object):
             kwargs: Pass-through to the underlying argparser parser.
 
             """
+
+            if name[0] in self.parser.prefix_chars:
+                action = kwargs.get('action', None)
+                has_value = 'nargs' in kwargs or not action or action == 'store'
+                self.optional_arguments.append(
+                    ParserManager.Parser.Argument(name,
+                                                  aliases=args,
+                                                  has_value=has_value,
+                                                  desc=kwargs.get('help', '')))
+            else:
+                self.positional_arguments.append(
+                    ParserManager.Parser.Argument(name,
+                                                  aliases=args,
+                                                  has_value='nargs' in kwargs,
+                                                  desc=kwargs.get('help', '')))
+
             self.parser.add_argument(name, *args, **kwargs)
 
         def set_defaults(self, **kwargs):
@@ -191,7 +258,7 @@ class ParserManager(object):
         if key in self.registered_subparsers:
             raise GitProjectException(f'Subparser key conflict: {key}')
         self.registered_subparsers.add(key)
-        subparser = parser.Subparser(key, parser.parser.add_subparsers(**kwargs))
+        subparser = parser.Subparser(key, parser, parser.parser.add_subparsers(**kwargs))
         parser._add_subparser(subparser)
         return subparser
 
@@ -231,6 +298,14 @@ class ParserManager(object):
             raise GitProjectException(f'Parser key conflict: {key}')
         self.registered_parsers.add(key)
         parser = self.Parser(key, subparser.subparser.add_parser(name, **kwargs))
+
+        # Note that we're adding a command argument to the parent parser.
+        subparser.parent_parser.command_arguments.append(
+            ParserManager.Parser.Argument(name,
+                                          aliases=[],
+                                          has_value=False,
+                                          desc=kwargs.get('help', '')))
+
         subparser._add_parser(parser)
         return parser
 
