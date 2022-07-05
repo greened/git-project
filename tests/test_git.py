@@ -795,3 +795,28 @@ def test_git_worktree_subdir(reset_directory, local_repository):
     git.prune_worktree('test-wt')
 
     assert not os.path.exists('user/test-wt')
+
+def test_git_worktree_get_current_worktree(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    # Create a branch for the worktree.
+    commit, ref = git._repo.resolve_refish('HEAD')
+    branch = git._repo.branches.create('user/test-wt', commit)
+
+    worktree_checkout_path = Path.cwd() / '..' / '..' / 'user' / 'test-wt'
+
+    git.add_worktree('test-wt', str(worktree_checkout_path), 'user/test-wt')
+
+    worktree_path = Path(local_repository.path) / 'worktrees' / 'test-wt'
+
+    assert os.path.exists(worktree_path)
+
+    os.chdir(worktree_checkout_path)
+
+    wtgit = git_project.Git()
+
+    assert wtgit.get_current_worktree() == 'test-wt'
