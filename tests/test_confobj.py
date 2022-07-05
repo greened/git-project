@@ -103,6 +103,13 @@ def test_confobj_get_with_kwargs(reset_directory, git):
 
     assert thing.first == 'newfirst'
 
+def test_confobj_name(reset_directory, git):
+    """Test that we translate illegal section names correctly."""
+
+    thing = MyThing.get(git, '__my_problematic.project', 'test')
+
+    assert thing.get_section() == 'ZZ--my-problematic-project.mything.test'
+
 def test_confobj_get_user_attribute(reset_directory, git):
     thing = MyThing.get(git, 'project', 'test')
 

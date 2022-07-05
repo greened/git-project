@@ -44,6 +44,19 @@ class ConfigObject(object):
         **kwargs: Keyword arguments of property values to set upon construction.
 
         """
+
+        # We don't want the section to introduce subsections, so translate . to
+        # -.  Since underscore is not allowed in a config key, translate them to -
+        # as well.
+
+        tr_table = project_section.maketrans('._', '--')
+        project_section = project_section.translate(tr_table)
+
+        # Also with pygit2 the key can't start with - so prepend a legal string.
+
+        if project_section.startswith('-'):
+            project_section = 'ZZ' + project_section
+
         self._git = git
         self._project_section = project_section
         self._subsection = subsection
