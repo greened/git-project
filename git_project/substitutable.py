@@ -83,7 +83,25 @@ class SubstitutableConfigObject(ConfigObject):
             path = git.get_working_copy_root()
             formats['path'] = path
 
-        formats['branch'] = git.get_current_branch()
+        current_branch = git.get_current_branch()
+        if not current_branch:
+            # See if we're rebasing and use the branch being rebased for the substitution.
+            worktree = git.get_current_worktree()
+            common_dir = git.get_git_common_dir()
+
+            if worktree:
+                common_dir = f'{common_dir}/worktrees/{worktree}'
+
+            rebase_apply = f'{common_dir}/rebase-apply'
+            rebase_merge = f'{common_dir}/rebase-merge'
+
+            for rebase_path in (rebase_apply, rebase_merge):
+                head_name = Path(f'{rebase_path}/head-name')
+                if head_name.exists():
+                    current_branch = git.refname_to_branch_name(head_name.read_text().strip())
+                    break
+
+        formats['branch'] = current_branch
 
         while True:
             try:

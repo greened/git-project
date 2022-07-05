@@ -305,3 +305,65 @@ def test_substitutable_substitute_substitutable_item(reset_directory, git):
                                              'echo {description}')
 
     assert command == f'echo {substitutable.description}'
+
+def test_substitutable_substitute_command_rebase(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    git.checkout('notpushed')
+    current_branch = git.get_current_branch()
+
+    os.chdir(git.get_working_copy_root())
+    output = git_project.run_command_with_shell('git rebase --exec false origin/master')
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd {project.builddir}/{current_branch} && make {project.target}'
+
+def test_substitutable_substitute_command_rebase_worktree(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    # Create a branch for the worktree.
+    commit, ref = git._repo.resolve_refish('HEAD')
+    branch = git._repo.branches.create('user/test-subst', commit)
+
+    worktree_checkout_path = Path.cwd() / '..' / '..' / 'user' / 'test-subst'
+
+    git.add_worktree('test-subst', str(worktree_checkout_path), 'user/test-subst')
+
+    os.chdir(worktree_checkout_path)
+
+    wtgit = git_project.Git()
+
+    current_branch = wtgit.get_current_branch()
+
+    git_project.run_command_with_shell('git rebase --exec false origin/master')
+
+    command = substitutable.substitute_value(wtgit,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd {project.builddir}/{current_branch} && make {project.target}'

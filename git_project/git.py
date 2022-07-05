@@ -464,6 +464,19 @@ class Git(object):
 
         return str(gitdir)
 
+    def get_current_worktree(self):
+        """Return the name of the current worktree or None if we are not in a
+        worktree."""
+        cwd = Path.cwd().resolve()
+        # See if this is a worktree.
+        for name in self._repo.list_worktrees():
+            worktree = self._repo.lookup_worktree(name)
+            path = Path(worktree.path).resolve()
+            if path == cwd or _is_relative_to(cwd, path):
+                return name
+
+        return None
+
     def get_working_copy_root(self):
         """Get the root of the current working copy."""
         cwd = Path.cwd().resolve()
