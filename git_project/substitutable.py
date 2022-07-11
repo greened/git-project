@@ -103,19 +103,33 @@ class SubstitutableConfigObject(ConfigObject):
 
         formats['branch'] = current_branch
 
+        def try_format(string, formats):
+            return eval(f"f'{string}'", formats)
+
+        def add_scope(project, key, formats):
+            print(f'Trying scope key: {key}')
+            scope = project.get_scope(key)
+            if scope:
+                value = scope.get_ident()
+                formats[key] = value
+
         while True:
             try:
-                newstring = string.format(**formats)
+                newstring = try_format(string, formats)
             except KeyError as exception:
                 # See if this is a scope name.
                 for key in exception.args:
-                    scope = project.get_scope(key)
-                    if scope:
-                        value = scope.get_ident()
-                        formats[key] = value
-
+                    add_scope(project, key, formats)
                 # Try again after adding scopes.
-                newstring = string.format(**formats)
+                newstring = try_format(string, formats)
+            except NameError as exception:
+                # args is simply the error  message, with the name surrounded by
+                # '.  Use .name attribute after upgrading to python 3.10.
+                for arg in exception.args:
+                    key = arg.split("\'")[1]
+                    add_scope(project, key, formats)
+                # Try again after adding scopes.
+                newstring = try_format(string, formats)
 
             changed = False if newstring == string else True
             string = newstring

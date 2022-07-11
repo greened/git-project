@@ -367,3 +367,34 @@ def test_substitutable_substitute_command_rebase_worktree(reset_directory, git):
                                              substitutable.command)
 
     assert command == f'cd {project.builddir}/{current_branch} && make {project.target}'
+
+def test_substitutable_substitute_fstring(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    # Create a branch.
+    commit, ref = git._repo.resolve_refish('HEAD')
+    branch = git._repo.branches.create('imerge/user/test-fstr', commit)
+
+    git.checkout('imerge/user/test-fstr')
+    current_branch = git.get_current_branch()
+
+    git_project.run_command_with_shell('git rebase --exec false origin/master')
+
+    substitutable.command='cd {builddir}/{branch.replace("imerge/", "", 1)} && make {target}'
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd {project.builddir}/{current_branch.replace("imerge/", "", 1)} && make {project.target}'
