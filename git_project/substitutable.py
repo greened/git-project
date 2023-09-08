@@ -107,7 +107,6 @@ class SubstitutableConfigObject(ConfigObject):
             return eval(f"f'{string}'", formats)
 
         def add_scope(project, key, formats):
-            print(f'Trying scope key: {key}')
             scope = project.get_scope(key)
             if scope:
                 value = scope.get_ident()
