@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+#
 # SPDX-FileCopyrightText: 2020-present David A. Greene <dag@obbligato.org>
 
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -18,11 +20,17 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-# Compiled python modules.
-*.pyc
-
-# Setuptools distribution folder.
-/dist/
-
-# Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
+from .common import check_config_file
+from .common import ParserManagerMock
+from .common import PluginMock
+from .common import orig_repository
+from .common import remote_repository
+from .common import local_repository
+from .common import reset_directory
+from .common import parser_manager
+from .common import plugin_manager
+from .common import git
+from .common import bare_git
+from .common import gitproject
+from .common import git_project_runner
+from .common import project
