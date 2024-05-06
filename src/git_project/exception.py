@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+#
 # SPDX-FileCopyrightText: 2020-present David A. Greene <dag@obbligato.org>
 
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -18,11 +20,15 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-# Compiled python modules.
-*.pyc
+from pathlib import Path
+import sys
 
-# Setuptools distribution folder.
-/dist/
+class GitProjectException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+        self._message = message
 
-# Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
+    @property
+    def message(self):
+        command = Path(sys.argv[0]).name
+        return f'{command}: {self._message}'
