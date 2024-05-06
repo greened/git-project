@@ -1,21 +1,32 @@
 #!/usr/bin/env python3
 #
-# Copyright 2020 David A. Greene
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-#
+# SPDX-FileCopyrightText: 2020-present David A. Greene <dag@obbligato.org>
+
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Copyright 2024 David A. Greene
+
+# This file is part of git-project
+
+# git-project is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by the Free
+# Software Foundation, either version 3 of the License, or (at your option) any
+# later version.
+
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program.  If not, see <https://www.gnu.org/licenses/>.
-#
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
+# You should have received a copy of the GNU Affero General Public License along
+# with git-project. If not, see <https://www.gnu.org/licenses/>.
+
+import sys
+if sys.version_info < (3, 10):
+    from importlib_metadata import entry_points
+else:
+    from importlib.metadata import entry_points
+
+# TODO: Remove after transitioning git-project-core-plugins.
 import pkg_resources
 
 ENTRYPOINT = 'git_project.plugins'
@@ -33,7 +44,11 @@ class PluginManager(object):
 
     def load_plugins(self, git, project):
         """Discover all plugins and instantiate them."""
-        for entrypoint in pkg_resources.iter_entry_points(ENTRYPOINT):
+        plugins = entry_points(group='git-project.plugins')
+        # TODO: Remove after transitioning git-project-core-plugins.
+        plugins.extend([entpt for entpt in
+                        pkg_resources.iter_entry_points(ENTRYPOINT)])
+        for entrypoint in plugins:
             plugin_class = entrypoint.load()
             plugin = plugin_class()
             self.plugins.append(plugin)
