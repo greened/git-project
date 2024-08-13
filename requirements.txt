@@ -18,5 +18,5 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-progressbar>=2.5
-pygit2>=1.15.0
+progressbar2>=4.4.2
+pygit2>=1.15.1
