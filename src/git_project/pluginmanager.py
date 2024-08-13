@@ -26,11 +26,6 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
-# TODO: Remove after transitioning git-project-core-plugins.
-import pkg_resources
-
-ENTRYPOINT = 'git_project.plugins'
-
 class PluginManager(object):
     """A Borg class responsible for discovering plugins and providing handles to
     them.
@@ -45,9 +40,6 @@ class PluginManager(object):
     def load_plugins(self, git, project):
         """Discover all plugins and instantiate them."""
         plugins = entry_points(group='git-project.plugins')
-        # TODO: Remove after transitioning git-project-core-plugins.
-        plugins.extend([entpt for entpt in
-                        pkg_resources.iter_entry_points(ENTRYPOINT)])
         for entrypoint in plugins:
             plugin_class = entrypoint.load()
             plugin = plugin_class()
