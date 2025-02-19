@@ -25,6 +25,7 @@ from git_project.test_support import check_config_file
 
 import os
 from pathlib import Path
+import pytest
 import shutil
 
 class MySubstitutable(git_project.SubstitutableConfigObject):
@@ -402,3 +403,22 @@ def test_substitutable_substitute_fstring(reset_directory, git):
                                              substitutable.command)
 
     assert command == f'cd {project.builddir}/{current_branch.replace("imerge/", "", 1)} && make {project.target}'
+
+def test_substitutable_substitute_recursive(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/{builddir}',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    with pytest.raises(Exception) as e:
+        command = substitutable.substitute_value(git,
+                                                 project,
+                                                 substitutable.command)

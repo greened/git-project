@@ -107,6 +107,19 @@ class SubstitutableConfigObject(ConfigObject):
 
         formats['branch'] = current_branch
 
+        # Make sure substitutions don't reference themselves, to avoid an
+        # infinite loop substituting.
+        #
+        # NOTE: This won't catch mutually-recursive situations like:
+        #
+        # path: {dir}/foo
+        # dir: {path}/bar
+        for key, value in formats.items():
+            if f'{{{key}}}' in value:
+                raise RuntimeError(
+                    f'Recursive substitution: {key} is in {value}'
+                )
+
         def try_format(string, formats):
             return eval(f"f'{string}'", formats)
 
