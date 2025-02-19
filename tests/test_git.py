@@ -391,10 +391,10 @@ def test_git_iterrefnames(reset_directory, local_repository):
             ['refs/heads/master',
              'refs/heads/merged_local',
              'refs/heads/merged_remote',
-             'refs/heads/merged_remote_only',
              'refs/heads/notpushed',
              'refs/heads/pushed',
              'refs/heads/pushed_indirectly',
+             'refs/heads/pushed_remote_only',
              'refs/heads/unmerged'])
 
 def test_git_iterrefnames_str(reset_directory, local_repository):
@@ -408,10 +408,10 @@ def test_git_iterrefnames_str(reset_directory, local_repository):
             ['refs/heads/master',
              'refs/heads/merged_local',
              'refs/heads/merged_remote',
-             'refs/heads/merged_remote_only',
              'refs/heads/notpushed',
              'refs/heads/pushed',
              'refs/heads/pushed_indirectly',
+             'refs/heads/pushed_remote_only',
              'refs/heads/unmerged'])
 
 def test_git_create_branch(reset_directory, local_repository):
@@ -668,10 +668,10 @@ def test_git_iterbranches(reset_directory, git):
     assert branches == {'master',
                         'merged_local',
                         'merged_remote',
-                        'merged_remote_only',
                         'notpushed',
                         'pushed',
                         'pushed_indirectly',
+                        'pushed_remote_only',
                         'unmerged',
                         'origin/HEAD',
                         'origin/master',
