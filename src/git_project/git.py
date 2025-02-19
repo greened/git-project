@@ -49,8 +49,6 @@ class Git(object):
 
     class RemoteCallbacks(pygit2.RemoteCallbacks):
         def __init__(self):
-            self.progress = progressbar.ProgressBar()
-
             self.started_transfer = False
             self.transfer_done = False
 
@@ -73,8 +71,11 @@ class Git(object):
         def transfer_progress(self, stats):
             if not self.started_transfer:
                 self.started_transfer = True
+                self.progress = progressbar.ProgressBar(
+                    maxval=stats.total_objects
+                )
                 print(f'Receiving objects ({stats.total_objects})...')
-                self.progress.start(stats.total_objects)
+                self.progress.start()
 
             if not self.transfer_done:
                 self.progress.update(stats.received_objects)
@@ -85,7 +86,10 @@ class Git(object):
             if stats.total_deltas > 0 and not self.started_deltas:
                 self.started_deltas = True
                 print(f'Resolving deltas ({stats.total_deltas})...')
-                self.progress.start(stats.total_deltas)
+                self.progress = progressbar.ProgressBar(
+                    maxval=stats.total_deltas
+                )
+                self.progress.start()
 
             if self.started_deltas and not self.deltas_done:
                 self.progress.update(stats.indexed_deltas)
