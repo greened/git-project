@@ -323,9 +323,9 @@ def init_clone(url, path):
 
     remote_only_commit = repo.revparse_single('refs/remotes/origin/remote_only')
 
-    merged_remote_only_branch = repo.branches.create('merged_remote_only', remote_only_commit)
+    pushed_remote_only_branch = repo.branches.create('pushed_remote_only', remote_only_commit)
 
-    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only, merged_remote_only
+    # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only, pushed_remote_only
     #   |                                \
     #   |                                 `---master, merged_local--unmerged
     #    \
