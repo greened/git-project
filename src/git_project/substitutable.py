@@ -77,15 +77,15 @@ class SubstitutableConfigObject(ConfigObject):
            formats[key] = value
 
         formats['project'] = project.get_section()
-        formats['gitdir'] = git.get_gitdir()
-        formats['git_common_dir'] = git.get_git_common_dir()
+        formats['gitdir'] = str(git.get_gitdir())
+        formats['git_common_dir'] = str(git.get_git_common_dir())
 
         if not found_path:
             # We haven't found a worktree or other construct to give us a path,
             # so do a mildly expensive thing to get the path of the curernt
             # working copy.
             path = git.get_working_copy_root()
-            formats['path'] = path
+            formats['path'] = str(path)
 
         current_branch = git.get_current_branch()
         if not current_branch:
