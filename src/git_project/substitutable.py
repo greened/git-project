@@ -64,28 +64,18 @@ class SubstitutableConfigObject(ConfigObject):
 
         # Substitute for project-global values.
         for key, value in project.iteritems():
-            if key == 'path':
-                found_path = True
             if key == self.get_subsection():
                 value = self.get_ident()
             formats[key] = value
 
         # Substitute for values in self.
         for key, value in self.iteritems():
-           if key == 'path':
-               found_path = True
            formats[key] = value
 
         formats['project'] = project.get_section()
         formats['gitdir'] = str(git.get_gitdir())
         formats['git_common_dir'] = str(git.get_git_common_dir())
-
-        if not found_path:
-            # We haven't found a worktree or other construct to give us a path,
-            # so do a mildly expensive thing to get the path of the curernt
-            # working copy.
-            path = git.get_working_copy_root()
-            formats['path'] = str(path)
+        formats['git_workdir'] = str(git.get_working_copy_root())
 
         current_branch = git.get_current_branch()
         if not current_branch:
