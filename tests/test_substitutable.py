@@ -422,3 +422,63 @@ def test_substitutable_substitute_recursive(reset_directory, git):
         command = substitutable.substitute_value(git,
                                                  project,
                                                  substitutable.command)
+
+def test_substitutable_substitute_project(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='/path/to/build/{project}',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd /path/to/build/{project.get_section()}/{git.get_current_branch()} && make {project.target}'
+
+def test_substitutable_substitute_gitdir(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='{gitdir}/../path/to/build',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd {git.get_gitdir()}/../path/to/build/{git.get_current_branch()} && make {project.target}'
+
+def test_substitutable_substitute_git_common_dir(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='{git_common_dir}/../path/to/build',
+                             target='debug')
+
+    substitutable = MySubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd {git.get_git_common_dir()}/../path/to/build/{git.get_current_branch()} && make {project.target}'
