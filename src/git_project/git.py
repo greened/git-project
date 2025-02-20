@@ -396,7 +396,10 @@ class Git(object):
 
     # Repository-wide info
     def __init__(self):
-        repo_path = pygit2.discover_repository(Path.cwd())
+        self.reinit(Path.cwd())
+
+    def reinit(self, gitdir: Path):
+        repo_path = pygit2.discover_repository(gitdir)
         if repo_path:
             self._repo = pygit2.Repository(repo_path)
             self._config = self.Config(self, self._repo.config)
