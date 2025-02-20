@@ -831,3 +831,25 @@ def test_git_get_remote_url(reset_directory, local_repository, remote_repository
     url = git.get_remote_url('origin')
 
     assert url == remote_repository.path
+
+def test_git_reinit(local_repository):
+    repo_parent = Path(local_repository.path).parent
+
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+    assert Path(git.get_gitdir()) == Path(local_repository.path)
+
+    new_hidden_dir = '.test.git'
+
+    gitdir = Path(git.get_gitdir())
+    newgitdir = repo_parent / new_hidden_dir
+
+    gitdir.rename(newgitdir)
+
+    git.reinit(newgitdir)
+
+    assert git.has_repo()
+    assert Path(git.get_gitdir()) == repo_parent / new_hidden_dir
