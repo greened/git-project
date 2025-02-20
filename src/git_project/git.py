@@ -556,6 +556,10 @@ class Git(object):
 
     # Operations on remotes
 
+    def get_remote_url(self, remote):
+        """Get the URL for the given remote."""
+        return self._repo.remotes[remote].url
+
     def set_remote_fetch_refspecs(self, remote, refspecs):
         """Set the refspec list for the given remote to refspecs."""
         if isinstance(refspecs, str):
