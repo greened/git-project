@@ -820,3 +820,14 @@ def test_git_worktree_get_current_worktree(reset_directory, local_repository):
     wtgit = git_project.Git()
 
     assert wtgit.get_current_worktree() == 'test-wt'
+
+def test_git_get_remote_url(reset_directory, local_repository, remote_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    url = git.get_remote_url('origin')
+
+    assert url == remote_repository.path
