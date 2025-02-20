@@ -853,3 +853,24 @@ def test_git_reinit(local_repository):
 
     assert git.has_repo()
     assert Path(git.get_gitdir()) == repo_parent / new_hidden_dir
+
+def test_git_get_git_common_dir_renamed(reset_directory, local_repository):
+    repo_parent = Path(local_repository.path).parent
+
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    new_hidden_dir = '.test.git'
+
+    gitdir = Path(git.get_gitdir())
+    newgitdir = repo_parent / new_hidden_dir
+
+    gitdir.rename(newgitdir)
+
+    git.reinit(newgitdir)
+
+    assert git.has_repo()
+    assert Path(git.get_git_common_dir()).name == new_hidden_dir
