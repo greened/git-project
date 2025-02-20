@@ -464,16 +464,18 @@ class Git(object):
         return self._repo.path
 
     def get_git_common_dir(self):
-        """Get the GIT_COMMON_DIR directory.
+        """Get the GIT_COMMON_DIR directory."""
+        if not self.get_current_worktree():
+            return self.get_gitdir()
 
-        NOTE: This assumes that worktree paths are in .git/worktrees/<name>
+        worktree_gitdir = Path(self._repo.path)
 
-        """
-        gitdir = Path(self._repo.path)
-        while gitdir.name != '.git':
-            gitdir = gitdir.parent
+        commondir_filename = worktree_gitdir / 'commondir'
 
-        return str(gitdir)
+        with open(commondir_filename, 'r') as commondir_file:
+            commondir = commondir_file.read().strip()
+
+        return commondir
 
     def get_current_worktree(self):
         """Return the name of the current worktree or None if we are not in a
