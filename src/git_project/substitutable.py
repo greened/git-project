@@ -119,7 +119,17 @@ class SubstitutableConfigObject(ConfigObject):
                 value = scope.get_ident()
                 formats[key] = value
 
+        # Allow escaping braces by surrounding each brace with braces.  This is
+        # not valid f-string syntax and is unlikely to be used in ordinary
+        # config values.  Replace with an equally unlikely sequence, then
+        # substitute on that string.
+
+        escaped_braces = False
         while True:
+            escaped_braces = escaped_braces or '{{}' in string or '{}}' in string
+            if escaped_braces:
+                string = string.replace('{{}', '[[[')
+                string = string.replace('{}}', ']]]')
             try:
                 newstring = try_format(string, formats)
             except KeyError as exception:
@@ -140,6 +150,9 @@ class SubstitutableConfigObject(ConfigObject):
             changed = False if newstring == string else True
             string = newstring
             if not changed:
+                if escaped_braces:
+                    string = string.replace('[[[', '{')
+                    string = string.replace(']]]', '}')
                 break
 
         return string
