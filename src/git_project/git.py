@@ -58,10 +58,12 @@ class Git(object):
             self.null_oid = pygit2.Oid(hex='0000000000000000000000000000000000000000')
 
         def credentials(self, url, username_from_url, allowed_types):
-            if allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY:
-                return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
-                                      str(Path.home() / '.ssh' / 'id_rsa'), '')
-            elif allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERNAME:
+            if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
+                return pygit2.Keypair(
+                    username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
+                    str(Path.home() / '.ssh' / 'id_rsa'), ''
+                )
+            elif allowed_types & pygit2.enums.CredentialType.USERNAME:
                 return pygit2.Username(username_from_url)
             return None
 

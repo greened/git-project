@@ -21,6 +21,7 @@ import os
 import git_project
 
 from pathlib import Path
+import pygit2
 import shutil
 
 def test_git_init(reset_directory,
@@ -874,3 +875,17 @@ def test_git_get_git_common_dir_renamed(reset_directory, local_repository):
 
     assert git.has_repo()
     assert Path(git.get_git_common_dir()).name == new_hidden_dir
+
+
+def test_git_remote_credentials(reset_directory):
+    callback = git_project.Git.RemoteCallbacks();
+
+    key_result = callback.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
+    )
+    name_result = callback.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.USERNAME
+    )
+
+    assert isinstance(key_result, pygit2.Keypair)
+    assert isinstance(name_result, pygit2.Username)
