@@ -375,10 +375,10 @@ class Git(object):
     class RemoteBranchDeleteCallback(pygit2.RemoteCallbacks):
         """Check the result of remove branch prune operations."""
         def credentials(self, url, username_from_url, allowed_types):
-            if allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY:
+            if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
                 return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
                                       str(Path.home() / '.ssh' / 'id_rsa'), '')
-            elif allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERNAME:
+            elif allowed_types & pygit2.enums.CredentialType.USERNAME:
                 return pygit2.Username(username_from_url)
             return None
 
@@ -389,10 +389,10 @@ class Git(object):
 
     class LsRemotesCallbacks(pygit2.RemoteCallbacks):
         def credentials(self, url, username_from_url, allowed_types):
-            if allowed_types & pygit2.credentials.GIT_CREDENTIAL_SSH_KEY:
+            if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
                 return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
                                       str(Path.home() / '.ssh' / 'id_rsa'), '')
-            elif allowed_types & pygit2.credentials.GIT_CREDENTIAL_USERNAME:
+            elif allowed_types & pygit2.enums.CredentialType.USERNAME:
                 return pygit2.Username(username_from_url)
             return None
 
