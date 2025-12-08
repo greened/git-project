@@ -889,3 +889,31 @@ def test_git_remote_credentials(reset_directory):
 
     assert isinstance(key_result, pygit2.Keypair)
     assert isinstance(name_result, pygit2.Username)
+
+
+def test_git_remote_branch_delete_credentials(reset_directory):
+    callback = git_project.Git.RemoteBranchDeleteCallback();
+
+    key_result = callback.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
+    )
+    name_result = callback.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.USERNAME
+    )
+
+    assert isinstance(key_result, pygit2.Keypair)
+    assert isinstance(name_result, pygit2.Username)
+
+
+def test_git_ls_remotes_credentials(reset_directory):
+    callback = git_project.Git.LsRemotesCallbacks();
+
+    key_result = callback.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
+    )
+    name_result = callback.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.USERNAME
+    )
+
+    assert isinstance(key_result, pygit2.Keypair)
+    assert isinstance(name_result, pygit2.Username)
