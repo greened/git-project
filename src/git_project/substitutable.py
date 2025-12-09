@@ -95,7 +95,9 @@ class SubstitutableConfigObject(ConfigObject):
                     current_branch = git.refname_to_branch_name(head_name.read_text().strip())
                     break
 
-        formats['branch'] = current_branch
+        print(f'current_branch: {current_branch}')
+        if current_branch is not None:
+            formats['branch'] = current_branch
 
         # Make sure substitutions don't reference themselves, to avoid an
         # infinite loop substituting.
