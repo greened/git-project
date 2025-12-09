@@ -50,6 +50,28 @@ class MySubstitutable(git_project.SubstitutableConfigObject):
                            command='cd {builddir}/{branch} && make {target}',
                            description='Test command')
 
+class MyNoBranchSubstitutable(git_project.SubstitutableConfigObject):
+    def __init__(self,
+                 git,
+                 project_section,
+                 subsection,
+                 ident,
+                 **kwargs):
+        super().__init__(git,
+                         project_section,
+                         subsection,
+                         ident,
+                         **kwargs)
+
+    @classmethod
+    def get(cls, git, project_section, ident):
+        return super().get(git,
+                           project_section,
+                           'mysubstitutable',
+                           ident,
+                           command='cd {builddir} && make {target}',
+                           description='Test command')
+
 def test_substitutable_get(reset_directory, git):
     substitutable = MySubstitutable.get(git, 'project', 'test')
 
@@ -542,3 +564,26 @@ def test_substitutable_substitute_preserve_escaped_braces(reset_directory, git):
                                              substitutable.command)
 
     assert command == f'cd {git.get_working_copy_root()}/{{{{}}path{{}}}}/to/build/{git.get_current_branch()} && make {project.target}'
+
+
+def test_substitutable_substitute_no_branch(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject',
+                             builddir='{git_workdir}/path/to/build',
+                             target='debug')
+
+    substitutable = MyNoBranchSubstitutable.get(git, 'project', 'test')
+
+    project = MyProject()
+
+    git.detach_head()
+
+    command = substitutable.substitute_value(git,
+                                             project,
+                                             substitutable.command)
+
+    assert command == f'cd {git.get_working_copy_root()}/path/to/build && make {project.target}'
