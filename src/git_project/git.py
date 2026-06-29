@@ -48,7 +48,7 @@ class Git(object):
     implement git-project functionality."""
 
     class RemoteCallbacks(pygit2.RemoteCallbacks):
-        def __init__(self):
+        def __init__(self, ssh_id: str):
             self.started_transfer = False
             self.transfer_done = False
 
@@ -57,11 +57,15 @@ class Git(object):
 
             self.null_oid = pygit2.Oid(hex='0000000000000000000000000000000000000000')
 
+            self.ssh_id = ssh_id
+
         def credentials(self, url, username_from_url, allowed_types):
             if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
                 return pygit2.Keypair(
-                    username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
-                    str(Path.home() / '.ssh' / 'id_rsa'), ''
+                    username_from_url,
+                    str(Path.home() / '.ssh' / f'{self.ssh_id}.pub'),
+                    str(Path.home() / '.ssh' / self.ssh_id),
+                    ''
                 )
             elif allowed_types & pygit2.enums.CredentialType.USERNAME:
                 return pygit2.Username(username_from_url)
@@ -373,11 +377,18 @@ class Git(object):
                 del self._sections[section_name]
 
     class RemoteBranchDeleteCallback(pygit2.RemoteCallbacks):
+        def __init__(self, ssh_id: str):
+            super().__init__(ssh_id)
+
         """Check the result of remove branch prune operations."""
         def credentials(self, url, username_from_url, allowed_types):
             if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
-                return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
-                                      str(Path.home() / '.ssh' / 'id_rsa'), '')
+                return pygit2.Keypair(
+                    username_from_url,
+                    str(Path.home() / '.ssh' / f'{self.ssh_id}.pub'),
+                    str(Path.home() / '.ssh' / self.ssh_id),
+                    ''
+                )
             elif allowed_types & pygit2.enums.CredentialType.USERNAME:
                 return pygit2.Username(username_from_url)
             return None
@@ -388,6 +399,9 @@ class Git(object):
                                 format(message))
 
     class LsRemotesCallbacks(pygit2.RemoteCallbacks):
+        def __init__(self, ssh_id: str):
+            super().__init__(ssh_id)
+
         def credentials(self, url, username_from_url, allowed_types):
             if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
                 return pygit2.Keypair(username_from_url, str(Path.home() / '.ssh' / 'id_rsa.pub'),
@@ -420,6 +434,10 @@ class Git(object):
         """Reload the config."""
         if self.has_repo():
             self._config = self.Config(self, self._repo.config)
+
+    def get_ssh_id(self):
+        """Return the ssh ID to use for this repository."""
+        return self.config.get_item('ssh', 'id')
 
     def is_bare_repository(self):
         """Return whether the configured repository is bare."""
@@ -821,7 +839,9 @@ class Git(object):
         # (local) name of the branch on the remote side.  Assume for now that
         # it's the same as our local name.
         remote_refname = self.get_remote_push_refname(refname, remote)
-        for item in self._repo.remotes[remote].ls_remotes(callbacks=Git.LsRemotesCallbacks()):
+        for item in self._repo.remotes[remote].ls_remotes(
+                callbacks=Git.LsRemotesCallbacks(self.get_ssh_id())
+        ):
             if not item['local'] and item['name'] == refname:
                 return True
         return False
@@ -832,7 +852,7 @@ class Git(object):
         # reason push :branch_name doesn't work.  push
         # :remotes/<remote>/branch_name also doesn't work.
         refname = self.branch_name_to_refname(branch_name)
-        callback = self.RemoteBranchDeleteCallback();
+        callback = self.RemoteBranchDeleteCallback(self.get_ssh_id());
         refspecs = [f':{refname}']
         remote = self._repo.remotes[remote]
         remote.push(refspecs, callback)
