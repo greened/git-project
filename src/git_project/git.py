@@ -604,7 +604,7 @@ class Git(object):
 
     def fetch_remote(self, remote):
         """Fetch all refspecs from the given remote."""
-        callbacks = Git.RemoteCallbacks()
+        callbacks = Git.RemoteCallbacks(self.get_ssh_id())
         self._repo.remotes[remote].fetch(callbacks=callbacks)
 
     # Info on refs.
@@ -770,14 +770,14 @@ class Git(object):
             result = branch.upstream.branch_name
         return result
 
-    def clone(self, url, path=None, bare=False):
+    def clone(self, url, ssh_id, path=None, bare=False):
         """Clone a respository at the given url, making a bare clone if specified."""
         parsed_url = urllib.parse.urlparse(url)
         url_path = Path(parsed_url.path).resolve()
         url_name = url_path.name
         target_path = path if path else str(Path.cwd() / url_name)
 
-        callbacks = Git.RemoteCallbacks()
+        callbacks = Git.RemoteCallbacks(ssh_id)
         self._repo = pygit2.clone_repository(url, target_path, bare, callbacks=callbacks)
         self._config = self.Config(self, self._repo.config)
 

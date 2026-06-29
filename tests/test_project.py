@@ -142,7 +142,7 @@ def test_project_prune_branch(reset_directory,
     git = git_project.Git()
     project = git_project.Project.get(git, 'project')
 
-    path = git.clone(remote_path)
+    path = git.clone(remote_path, 'id_rsa')
 
     os.chdir(path)
 

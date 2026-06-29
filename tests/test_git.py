@@ -439,7 +439,7 @@ def test_git_clone(reset_directory, remote_repository, tmp_path_factory):
 
     remote_url = 'file://' + remote_repository.path
 
-    clone_path = git.clone(remote_url)
+    clone_path = git.clone(remote_url, 'id_rsa')
     assert os.path.exists(clone_path)
 
     os.chdir(clone_path)
@@ -454,7 +454,7 @@ def test_git_clone(reset_directory, remote_repository, tmp_path_factory):
 
     git = git_project.Git()
 
-    clone_path = git.clone(remote_url, bare=True)
+    clone_path = git.clone(remote_url, 'id_rsa', bare=True)
 
     assert os.path.exists(clone_path)
 
@@ -480,7 +480,7 @@ def test_git_clone_with_path(reset_directory,
 
     path = path / 'test-clone'
 
-    clone_path = git.clone(remote_url, path)
+    clone_path = git.clone(remote_url, 'id_rsa', path)
 
     assert os.path.exists(clone_path)
     assert clone_path == str(path)
@@ -878,7 +878,7 @@ def test_git_get_git_common_dir_renamed(reset_directory, local_repository):
 
 
 def test_git_remote_credentials(reset_directory):
-    callback = git_project.Git.RemoteCallbacks();
+    callback = git_project.Git.RemoteCallbacks(ssh_id='id_rsa');
 
     key_result = callback.credentials(
         'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
@@ -892,7 +892,7 @@ def test_git_remote_credentials(reset_directory):
 
 
 def test_git_remote_branch_delete_credentials(reset_directory):
-    callback = git_project.Git.RemoteBranchDeleteCallback();
+    callback = git_project.Git.RemoteBranchDeleteCallback(ssh_id='id_rsa');
 
     key_result = callback.credentials(
         'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
@@ -906,7 +906,7 @@ def test_git_remote_branch_delete_credentials(reset_directory):
 
 
 def test_git_ls_remotes_credentials(reset_directory):
-    callback = git_project.Git.LsRemotesCallbacks();
+    callback = git_project.Git.LsRemotesCallbacks(ssh_id='id_rsa');
 
     key_result = callback.credentials(
         'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
