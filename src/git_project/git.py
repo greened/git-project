@@ -378,7 +378,7 @@ class Git(object):
 
     class RemoteBranchDeleteCallback(pygit2.RemoteCallbacks):
         def __init__(self, ssh_id: str):
-            super().__init__(ssh_id)
+            self.ssh_id = ssh_id
 
         """Check the result of remove branch prune operations."""
         def credentials(self, url, username_from_url, allowed_types):
@@ -400,7 +400,7 @@ class Git(object):
 
     class LsRemotesCallbacks(pygit2.RemoteCallbacks):
         def __init__(self, ssh_id: str):
-            super().__init__(ssh_id)
+            self.ssh_id = ssh_id
 
         def credentials(self, url, username_from_url, allowed_types):
             if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
