@@ -249,3 +249,19 @@ def test_runnable_substitute_scope(reset_directory, git):
     command = runnable.substitute_command(git, project)
 
     assert command == f'cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.myrunnable} {project.get_section()}'
+
+
+class ExitRunnable(git_project.RunnableConfigObject):
+    @classmethod
+    def get(cls, git, project_section, ident, command):
+        return super().get(git, project_section, "exitrunnable", ident, command=command, description="exit test")
+
+def test_runnable_run_returns_exit_code(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git, "project", None, "myproject")
+
+    project = MyProject()
+
+    assert ExitRunnable.get(git, "project", "ok", "true").run(git, project) == 0
+    assert ExitRunnable.get(git, "project", "fail", "false").run(git, project) != 0

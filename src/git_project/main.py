@@ -55,13 +55,15 @@ def main_impl(args=None):
 
     plugin_manager.initialize_plugins(git, gp, project)
 
-    clargs.func(git, gp, project, clargs)
+    rc = clargs.func(git, gp, project, clargs)
 
     git.validate_config()
 
+    return rc
+
 def main(args=None):
     try:
-        main_impl(args)
+        raise SystemExit(main_impl(args))
     except git_project.GitProjectException as exception:
         print(f'{exception.message}')
         raise SystemExit(-1)

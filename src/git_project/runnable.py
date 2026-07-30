@@ -72,4 +72,4 @@ class RunnableConfigObject(SubstitutableConfigObject):
 
         print(command)
 
-        run_command_with_shell(command)
+        return run_command_with_shell(command)

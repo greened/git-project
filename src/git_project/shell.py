@@ -44,6 +44,10 @@ def run_command_with_shell(command, dry_run=False, show_command=False):
         # Wait for it to complete
         proc.communicate()
 
+        return proc.returncode
+
+    return 0
+
 def capture_command(command,
                     clargs=None,
                     dry_run=False,
