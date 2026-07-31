@@ -63,7 +63,11 @@ def main_impl(args=None):
 
 def main(args=None):
     try:
-        raise SystemExit(main_impl(args))
+        rc = main_impl(args)
+        # Only an int return is an exit code; command funcs may return a
+        # domain object (e.g. the created Worktree), which must not turn a
+        # successful run into a non-zero process exit.
+        raise SystemExit(rc if isinstance(rc, int) else 0)
     except git_project.GitProjectException as exception:
         print(f'{exception.message}')
         raise SystemExit(-1)
