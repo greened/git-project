@@ -31,7 +31,7 @@ name = "git-project"
 dynamic = ["dependencies", "readme", "version"]
 description = "The extensible stupid project manager"
 license = "AGPL-3.0-or-later"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     { name = "David A. Greene", email = "dag@obbligato.org" },
 ]
@@ -45,7 +45,8 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Software Development :: Version Control :: Git",
 ]
 
@@ -70,6 +71,9 @@ source = "vcs"
 
 [tool.hatch.envs.default]
 dependencies = [
+  # Provides the "git-project.plugins" entry points the CLI tests dispatch
+  # through; without them argparse offers an empty subcommand list.
+  "git-project-core-plugins",
   "coverage[toml]>=6.5",
   "pytest",
   "pytest-console-scripts",
@@ -88,7 +92,7 @@ cov = [
 ]
 
 [[tool.hatch.envs.all.matrix]]
-python = ["3.9", "3.10", "3.11"]
+python = ["3.10", "3.11"]
 
 [tool.hatch.envs.lint]
 detached = true
@@ -114,12 +118,12 @@ all = [
 ]
 
 [tool.black]
-target-version = ["py37"]
+target-version = ["py310"]
 line-length = 120
 skip-string-normalization = true
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py310"
 line-length = 120
 select = [
   "A",

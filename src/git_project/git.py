@@ -32,15 +32,6 @@ import urllib
 from .exception import GitProjectException
 from .shell import capture_command
 
-# Python 3.9 things so we don't actually need 3.9.
-
-def _is_relative_to(path, other):
-    try:
-        path.relative_to(other)
-        return True
-    except ValueError:
-        return False
-
 # Git commands
 #
 class Git(object):
@@ -509,7 +500,7 @@ class Git(object):
         for name in self._repo.list_worktrees():
             worktree = self._repo.lookup_worktree(name)
             path = Path(worktree.path).resolve()
-            if path == cwd or _is_relative_to(cwd, path):
+            if path == cwd or cwd.is_relative_to(path):
                 return name
 
         return None
@@ -522,13 +513,13 @@ class Git(object):
         for name in self._repo.list_worktrees():
             worktree = self._repo.lookup_worktree(name)
             path = Path(worktree.path).resolve()
-            if path == cwd or _is_relative_to(cwd, path):
+            if path == cwd or cwd.is_relative_to(path):
                 return str(path)
 
         # See if we have a GITDIR somewhere along the way.
         gitdir = Path(self._repo.path).resolve()
         while True:
-            if gitdir != cwd and _is_relative_to(gitdir, cwd):
+            if gitdir != cwd and gitdir.is_relative_to(cwd):
                 return cwd
             parent = cwd.parent
             if parent == cwd:
@@ -835,18 +826,18 @@ class Git(object):
         self._repo.branches.delete(branch_name)
 
     def remote_branch_exists(self, branch_name, remote):
-        """Return whethe the given branch exists on the given remote."""
+        """Return whether the given branch exists on the given remote."""
         refname = self.branch_name_to_refname(branch_name)
         # FIXME: This is likely to be something like
         # refs/remotes/<remote>/<branch_name> but that is not what it's called
-        # in the ls_remotes call.  There doesn't seem to be a way to get the
+        # in the list_heads call.  There doesn't seem to be a way to get the
         # (local) name of the branch on the remote side.  Assume for now that
         # it's the same as our local name.
         remote_refname = self.get_remote_push_refname(refname, remote)
-        for item in self._repo.remotes[remote].ls_remotes(
+        for item in self._repo.remotes[remote].list_heads(
                 callbacks=Git.LsRemotesCallbacks(self.get_ssh_id())
         ):
-            if not item['local'] and item['name'] == refname:
+            if not item.local and item.name == refname:
                 return True
         return False
 

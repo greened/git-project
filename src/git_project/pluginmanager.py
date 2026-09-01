@@ -20,11 +20,7 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-import sys
-if sys.version_info < (3, 10):
-    from importlib_metadata import entry_points
-else:
-    from importlib.metadata import entry_points
+from importlib.metadata import entry_points
 
 class PluginManager(object):
     """A Borg class responsible for discovering plugins and providing handles to
