@@ -118,29 +118,26 @@ def test_project_branch_is_pushed(project):
     assert not project.branch_is_pushed('unmerged')
     assert project.branch_is_pushed('pushed_remote_only')
 
-def test_project_prune_branch(reset_directory,
-                              remote_repository,
-                              tmp_path_factory):
+def clone_with_pushed_branch(remote_repository, tmp_path_factory):
+    """Return a project on a fresh clone of the remote repository, with the local
+    branch `pushed' in place.
+
+    """
     remotedir = tmp_path_factory.mktemp('remote-workdir')
 
     os.chdir(remotedir)
 
     git_project.capture_command(f'git clone --mirror {remote_repository.path}')
 
-    print(f'remote.path: {remote_repository.path}')
-
     remote_name = Path(remote_repository.path).name + '.git'
 
     remote_path = str(Path.cwd() / remote_name)
-
-    print(f'remote_path: {remote_path}')
 
     localdir = tmp_path_factory.mktemp('local-workdir')
 
     os.chdir(localdir)
 
     git = git_project.Git()
-    project = git_project.Project.get(git, 'project')
 
     path = git.clone(remote_path, 'id_rsa')
 
@@ -150,11 +147,35 @@ def test_project_prune_branch(reset_directory,
 
     project = git_project.Project.get(git, 'project')
 
+    # A clone gets only a remote-tracking ref for a non-default branch, and
+    # revparse does not resolve a bare name to one, so create the local branch
+    # the prune is meant to delete.
+    project._git.create_branch('pushed', 'origin/pushed')
+
+    assert project._git.committish_exists('pushed')
     assert project._git.remote_branch_exists('pushed', 'origin')
+
+    return project
+
+def test_project_prune_branch(reset_directory,
+                              remote_repository,
+                              tmp_path_factory):
+    project = clone_with_pushed_branch(remote_repository, tmp_path_factory)
 
     project.prune_branch('pushed')
 
+    assert not project._git.committish_exists('pushed')
     assert not project._git.remote_branch_exists('pushed', 'origin')
+
+def test_project_prune_branch_keep_remote_branch(reset_directory,
+                                                 remote_repository,
+                                                 tmp_path_factory):
+    project = clone_with_pushed_branch(remote_repository, tmp_path_factory)
+
+    project.prune_branch('pushed', keep_remote_branch=True)
+
+    assert not project._git.committish_exists('pushed')
+    assert project._git.remote_branch_exists('pushed', 'origin')
 
 def test_project_get_in_repository_non_default_main(git):
     git.create_branch('newmain', 'master')

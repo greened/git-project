@@ -188,14 +188,19 @@ class Project(ScopedConfigObject):
 
     # Higher-level commands
 
-    def prune_branch(self, branch):
-        """Delete a branch, both locally and on any remotes on which it exists.
+    def prune_branch(self, branch, keep_remote_branch=False):
+        """Delete a branch locally and, unless keep_remote_branch is set, on any
+        remotes on which it exists.
 
         branch: The branch to delete.
 
+        keep_remote_branch: If True, leave the branch in place on every remote
+        and delete only the local branch.
+
         """
-        for remote in self.iterremotes():
-            if self._git.remote_branch_exists(branch, remote):
-                self._git.delete_remote_branch(branch, remote)
+        if not keep_remote_branch:
+            for remote in self.iterremotes():
+                if self._git.remote_branch_exists(branch, remote):
+                    self._git.delete_remote_branch(branch, remote)
         if self._git.committish_exists(branch):
             self._git.delete_branch(Git.refname_to_branch_name(branch))
