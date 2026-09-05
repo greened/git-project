@@ -38,8 +38,26 @@ class Git(object):
     """A facade over a lower-level interface to git providing interfaces needed to
     implement git-project functionality."""
 
+    @staticmethod
+    def _ssh_credentials(ssh_id, username_from_url, allowed_types):
+        """Return the credentials to authenticate with, or None if we have none to
+        offer.  Name the keypair under ~/.ssh for the given ssh ID.  Offer no
+        keypair without an ssh ID.
+
+        """
+        if ssh_id and allowed_types & pygit2.enums.CredentialType.SSH_KEY:
+            return pygit2.Keypair(
+                username_from_url,
+                str(Path.home() / '.ssh' / f'{ssh_id}.pub'),
+                str(Path.home() / '.ssh' / ssh_id),
+                ''
+            )
+        elif allowed_types & pygit2.enums.CredentialType.USERNAME:
+            return pygit2.Username(username_from_url)
+        return None
+
     class RemoteCallbacks(pygit2.RemoteCallbacks):
-        def __init__(self, ssh_id: str):
+        def __init__(self, ssh_id: str | None):
             self.started_transfer = False
             self.transfer_done = False
 
@@ -51,16 +69,8 @@ class Git(object):
             self.ssh_id = ssh_id
 
         def credentials(self, url, username_from_url, allowed_types):
-            if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
-                return pygit2.Keypair(
-                    username_from_url,
-                    str(Path.home() / '.ssh' / f'{self.ssh_id}.pub'),
-                    str(Path.home() / '.ssh' / self.ssh_id),
-                    ''
-                )
-            elif allowed_types & pygit2.enums.CredentialType.USERNAME:
-                return pygit2.Username(username_from_url)
-            return None
+            return Git._ssh_credentials(self.ssh_id, username_from_url,
+                                        allowed_types)
 
         def sideband_progress(self, message):
             print(f'Remote: {message}')
@@ -368,21 +378,13 @@ class Git(object):
                 del self._sections[section_name]
 
     class RemoteBranchDeleteCallback(pygit2.RemoteCallbacks):
-        def __init__(self, ssh_id: str):
+        def __init__(self, ssh_id: str | None):
             self.ssh_id = ssh_id
 
         """Check the result of remove branch prune operations."""
         def credentials(self, url, username_from_url, allowed_types):
-            if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
-                return pygit2.Keypair(
-                    username_from_url,
-                    str(Path.home() / '.ssh' / f'{self.ssh_id}.pub'),
-                    str(Path.home() / '.ssh' / self.ssh_id),
-                    ''
-                )
-            elif allowed_types & pygit2.enums.CredentialType.USERNAME:
-                return pygit2.Username(username_from_url)
-            return None
+            return Git._ssh_credentials(self.ssh_id, username_from_url,
+                                        allowed_types)
 
         def push_update_reference(self, refname, message):
             if message is not None:
@@ -390,20 +392,12 @@ class Git(object):
                                 format(message))
 
     class LsRemotesCallbacks(pygit2.RemoteCallbacks):
-        def __init__(self, ssh_id: str):
+        def __init__(self, ssh_id: str | None):
             self.ssh_id = ssh_id
 
         def credentials(self, url, username_from_url, allowed_types):
-            if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
-                return pygit2.Keypair(
-                    username_from_url,
-                    str(Path.home() / '.ssh' / f'{self.ssh_id}.pub'),
-                    str(Path.home() / '.ssh' / self.ssh_id),
-                    ''
-                )
-            elif allowed_types & pygit2.enums.CredentialType.USERNAME:
-                return pygit2.Username(username_from_url)
-            return None
+            return Git._ssh_credentials(self.ssh_id, username_from_url,
+                                        allowed_types)
 
     # Repository-wide info
     def __init__(self):
@@ -761,8 +755,14 @@ class Git(object):
             result = branch.upstream.branch_name
         return result
 
-    def clone(self, url, ssh_id, path=None, bare=False):
-        """Clone a respository at the given url, making a bare clone if specified."""
+    def clone(self, url, ssh_id=None, path=None, bare=False):
+        """Clone a repository at the given url, making a bare clone if specified.
+        Authenticate with the ssh ID if one is given.  A clone runs before there
+        is a repository config to read one from, so the caller supplies it.
+        Without an ssh ID we offer no key, which suits a local or an anonymous
+        url.  An ssh url instead fails to authenticate.
+
+        """
         parsed_url = urllib.parse.urlparse(url)
         url_path = Path(parsed_url.path).resolve()
         url_name = url_path.name

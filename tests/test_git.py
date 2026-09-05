@@ -485,6 +485,50 @@ def test_git_clone_with_path(reset_directory,
     assert os.path.exists(clone_path)
     assert clone_path == str(path)
 
+def test_git_clone_without_ssh_id(reset_directory,
+                                  remote_repository,
+                                  tmp_path_factory):
+    path = tmp_path_factory.mktemp('no-ssh-id-clone-workdir')
+
+    os.chdir(path)
+
+    git = git_project.Git()
+
+    remote_url = 'file://' + remote_repository.path
+
+    clone_path = git.clone(remote_url)
+
+    assert os.path.exists(clone_path)
+
+    os.chdir(clone_path)
+
+    git = git_project.Git()
+    assert git.has_repo()
+    assert not git.is_bare_repository()
+
+def test_git_ssh_credentials(reset_directory):
+    ssh_key = pygit2.enums.CredentialType.SSH_KEY
+    username = pygit2.enums.CredentialType.USERNAME
+
+    # A local url authenticates with nothing, so the clone tests above never
+    # reach the callback.  Check the credential choice directly instead.
+    credentials = git_project.Git._ssh_credentials('id_rsa', 'git', ssh_key)
+
+    assert credentials.credential_tuple == (
+        'git',
+        str(Path.home() / '.ssh' / 'id_rsa.pub'),
+        str(Path.home() / '.ssh' / 'id_rsa'),
+        ''
+    )
+
+    # Without an ssh ID we must not name a key.
+    assert git_project.Git._ssh_credentials(None, 'git', ssh_key) is None
+
+    credentials = git_project.Git._ssh_credentials(None, 'git',
+                                                   ssh_key | username)
+
+    assert credentials.credential_tuple == ('git',)
+
 def test_git_checkout(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
@@ -890,6 +934,12 @@ def test_git_remote_credentials(reset_directory):
     assert isinstance(key_result, pygit2.Keypair)
     assert isinstance(name_result, pygit2.Username)
 
+    no_id = git_project.Git.RemoteCallbacks(ssh_id=None)
+
+    assert no_id.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
+    ) is None
+
 
 def test_git_remote_branch_delete_credentials(reset_directory):
     callback = git_project.Git.RemoteBranchDeleteCallback(ssh_id='id_rsa');
@@ -904,6 +954,12 @@ def test_git_remote_branch_delete_credentials(reset_directory):
     assert isinstance(key_result, pygit2.Keypair)
     assert isinstance(name_result, pygit2.Username)
 
+    no_id = git_project.Git.RemoteBranchDeleteCallback(ssh_id=None)
+
+    assert no_id.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
+    ) is None
+
 
 def test_git_ls_remotes_credentials(reset_directory):
     callback = git_project.Git.LsRemotesCallbacks(ssh_id='id_rsa');
@@ -917,3 +973,9 @@ def test_git_ls_remotes_credentials(reset_directory):
 
     assert isinstance(key_result, pygit2.Keypair)
     assert isinstance(name_result, pygit2.Username)
+
+    no_id = git_project.Git.LsRemotesCallbacks(ssh_id=None)
+
+    assert no_id.credentials(
+        'ssh:me@my.org/test.git', 'me', pygit2.enums.CredentialType.SSH_KEY
+    ) is None
