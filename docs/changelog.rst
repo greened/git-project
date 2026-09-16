@@ -30,10 +30,34 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+
+`0.0.38`_ - 2026-09-15
+----------------------
 Added
 .....
+- ``prune_branch`` takes a ``keep_remote_branch`` keyword. It previously
+  deleted the branch from every project remote as well as locally, so retiring
+  a local branch destroyed the remote copy with it.
+
+Changed
+.......
+- Python 3.10 or later is now required. ``list_heads`` needs it, and 1.15.1 is
+  the last pygit2 that supports 3.9, so on 3.9 there is no installable pygit2
+  carrying the API.
+- pygit2 1.18.2 or later is now required, up from 1.15.1. The old range still
+  resolved, so the package installed cleanly and then raised ``AttributeError``
+  in use.
 
 Fixed
 .....
+- ``git <project> clone`` did not work at all. ``Git.clone`` required an ssh ID,
+  so the clone paths raised ``TypeError``. The ID is now optional, and a
+  keypair is simply not offered when there is none. This also fixes
+  ``fetch_remote``, ``remote_branch_exists`` and ``delete_remote_branch`` for
+  any repository that never set ``ssh.id``.
+- ``remote_branch_exists`` called ``Remote.ls_remotes()``, which pygit2 1.20
+  removed. It now calls ``list_heads()`` and reads the fields off the
+  ``RemoteHead`` objects.
 
-.. _Unreleased: https://github.com/greened/git-project/changes/0.0.1...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.38...HEAD
+.. _0.0.38: https://github.com/greened/git-project/compare/v0.0.37...v0.0.38
