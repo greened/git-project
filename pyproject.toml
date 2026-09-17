@@ -117,6 +117,17 @@ all = [
   "typing",
 ]
 
+[tool.hatch.envs.docs]
+# NOT detached: autodoc imports the package, because docs/intro.rst pulls the
+# module docstring in with automodule rather than keeping a second copy. A
+# detached env would build with the package absent and the directive would fail.
+dependencies = [
+  "sphinx>=7",
+]
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build -M html docs docs/_build"
+clean = "sphinx-build -M clean docs docs/_build"
+
 [tool.black]
 target-version = ["py310"]
 line-length = 120
@@ -218,6 +229,21 @@ text = """
 .. contents:: Table of Contents
 
 """
+
+# The rest of the module docstring: everything past the badges. Without this
+# the description stopped at the separator above, so Installation and the whole
+# body were never published. The docstring is the single source; docs/intro.rst
+# pulls the same text in with automodule.
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "src/git_project/__init__.py"
+start-after = "-------\n"
+end-before = "\"\"\""
+
+# Fragments are concatenated verbatim and the docstring ends in an indented
+# block, so without a blank line the next fragment unindents into it. That is an
+# RST error and PyPI rejects a description that fails to render.
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+text = "\n"
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
 path = "docs/authors.rst"

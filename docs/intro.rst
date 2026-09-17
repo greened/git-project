@@ -26,4 +26,4 @@
     You should have received a copy of the GNU Affero General Public License
     along with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-.. automodule:: git-project
+.. automodule:: git_project
