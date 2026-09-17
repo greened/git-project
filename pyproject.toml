@@ -63,7 +63,7 @@ git-project = "git_project.main:main"
 
 [project.urls]
 Documentation = "https://github.com/greened/git-project#readme"
-Issues = "https://github.com/unknown/greened/issues"
+Issues = "https://github.com/greened/git-project/issues"
 Source = "https://github.com/greened/git-project"
 
 [tool.hatch.version]
