@@ -403,21 +403,55 @@ class Git(object):
     def __init__(self):
         self.reinit(Path.cwd())
 
-    def reinit(self, gitdir: Path):
-        repo_path = pygit2.discover_repository(gitdir)
+    def reinit(self, gitdir: Path | str):
+        """Attach to the repository that holds gitdir, or to no repository.
+
+        A caller may build a Git outside any repository.  Record the path we
+        searched and leave the repository empty.  has_repo then answers False,
+        and each repository accessor raises an error that names the path.
+
+        """
+        self._search_path = Path(gitdir).resolve()
+        repo_path = pygit2.discover_repository(self._search_path)
         if repo_path:
-            self._repo = pygit2.Repository(repo_path)
-            self._config = self.Config(self, self._repo.config)
+            self._repository = pygit2.Repository(repo_path)
+            self._config = self.Config(self, self._repository.config)
             self.validate_config()
+        else:
+            self._repository = None
+            self._config = None
+
+    def _no_repository_error(self):
+        """Return the error to raise when there is no repository."""
+        return GitProjectException(
+            f'No git repository at {self._search_path} or any parent')
+
+    @property
+    def _repo(self):
+        """Return the pygit2 repository.  Raise if there is none.
+
+        Each accessor reads the repository through this property, so one guard
+        gives them all the same legible error.
+
+        """
+        if self._repository is None:
+            raise self._no_repository_error()
+        return self._repository
 
     @property
     def config(self):
-        """Return the config of the repository."""
+        """Return the config of the repository.
+
+        Raise GitProjectException when there is no repository.
+
+        """
+        if self._repository is None or self._config is None:
+            raise self._no_repository_error()
         return self._config
 
     def has_repo(self):
         """Return whether we are attached to a repository."""
-        return hasattr(self, '_repo')
+        return self._repository is not None
 
     def reload_config(self):
         """Reload the config."""
@@ -552,8 +586,13 @@ class Git(object):
 
     def committish_exists(self, committish):
         """Return whether the committish exists in the repository."""
+        # Read the repository before the try.  The bare except below would
+        # otherwise swallow the no-repository error and answer False, which
+        # says the committish is absent rather than that there is nothing to
+        # look in.
+        repo = self._repo
         try:
-            self._repo.revparse_single(committish)
+            repo.revparse_single(committish)
             return True
         except:
             return False
@@ -769,8 +808,8 @@ class Git(object):
         target_path = path if path else str(Path.cwd() / url_name)
 
         callbacks = Git.RemoteCallbacks(ssh_id)
-        self._repo = pygit2.clone_repository(url, target_path, bare, callbacks=callbacks)
-        self._config = self.Config(self, self._repo.config)
+        self._repository = pygit2.clone_repository(url, target_path, bare, callbacks=callbacks)
+        self._config = self.Config(self, self._repository.config)
 
         return str(Path(target_path).resolve())
 

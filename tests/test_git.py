@@ -22,6 +22,7 @@ import git_project
 
 from pathlib import Path
 import pygit2
+import pytest
 import shutil
 
 def test_git_init(reset_directory,
@@ -40,6 +41,90 @@ def test_git_init(reset_directory,
 
     assert git.has_repo()
     assert git._repo.path == local_repository.path
+
+@pytest.mark.parametrize('accessor', ['_repo', 'config',
+                                      'is_bare_repository', 'get_main_branch'])
+def test_git_outside_repository_reports_it(reset_directory,
+                                           tmp_path_factory,
+                                           accessor):
+    path = tmp_path_factory.mktemp('no-repo-workdir')
+    os.chdir(path)
+    git = git_project.Git()
+
+    assert not git.has_repo()
+
+    with pytest.raises(git_project.GitProjectException) as exc:
+        # A property raises on the read, a method on the call.
+        result = getattr(git, accessor)
+        if callable(result):
+            result()
+
+    assert str(path) in str(exc.value)
+
+def test_git_committish_exists_outside_repository_reports_it(
+        reset_directory,
+        tmp_path_factory):
+    path = tmp_path_factory.mktemp('committish-no-repo-workdir')
+    os.chdir(path)
+    git = git_project.Git()
+
+    # committish_exists takes an argument, so the parametrized spec above
+    # cannot drive it.  Its bare except answers False for every fault it
+    # covers, so the repository read has to stay outside.  False here would
+    # say the committish is absent rather than that there is nothing to look
+    # in.
+    with pytest.raises(git_project.GitProjectException) as exc:
+        git.committish_exists('HEAD')
+
+    assert str(path) in str(exc.value)
+
+def test_git_reinit_searches_the_path_it_reports(reset_directory,
+                                                 local_repository):
+    os.chdir(local_repository.path)
+    git = git_project.Git()
+
+    # reinit records the resolved path, so it has to search that same path.
+    # Searching the caller's path instead detaches from a repository that is
+    # right here, then names the resolved path as having none.
+    git.reinit('')
+
+    assert git.has_repo()
+
+def test_git_reinit_outside_repository_detaches(reset_directory,
+                                                local_repository,
+                                                tmp_path_factory):
+    os.chdir(local_repository.path)
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    # Re-pointing an attached Git at a path with no repository detaches it.
+    # Answering has_repo True here would report the previous repository.
+    path = tmp_path_factory.mktemp('reinit-no-repo-workdir')
+    git.reinit(path)
+
+    assert not git.has_repo()
+
+    with pytest.raises(git_project.GitProjectException) as exc:
+        git.is_bare_repository()
+
+    assert str(path) in str(exc.value)
+
+    # The config reports no repository too, rather than handing back the one
+    # belonging to the repository we just left.
+    with pytest.raises(git_project.GitProjectException) as exc:
+        _ = git.config
+
+    assert str(path) in str(exc.value)
+
+    # Re-pointing back at a repository reattaches.  Both fields have to come
+    # back, so read the config as well: it raises when either one is empty.
+    git.reinit(local_repository.path)
+
+    assert git.has_repo()
+    assert not git.is_bare_repository()
+
+    _ = git.config
 
 def test_git_config(reset_directory, local_repository):
     def check_lines(section,
