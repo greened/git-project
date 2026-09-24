@@ -31,7 +31,7 @@ ChangeLog
 `Unreleased`_
 -------------
 
-`0.0.38`_ - 2026-09-15
+`0.0.38`_ - 2026-09-24
 ----------------------
 Added
 .....
@@ -58,6 +58,27 @@ Fixed
 - ``remote_branch_exists`` called ``Remote.ls_remotes()``, which pygit2 1.20
   removed. It now calls ``list_heads()`` and reads the fields off the
   ``RemoteHead`` objects.
+- A ``Git`` re-pointed at a path with no repository stayed attached to the
+  previous one. ``has_repo`` answered ``True``, so later work ran against the
+  repository the caller had left. It now detaches, and ``has_repo`` answers
+  ``False``.
+- A ``Git`` built outside any repository named a missing private field rather
+  than the real fault. ``reinit`` set the repository only when discovery
+  succeeded, so most accessors raised ``AttributeError``. ``config`` named
+  ``_config`` rather than ``_repo``, and ``committish_exists`` raised nothing
+  at all and answered ``False``, which said the committish was absent. The
+  repository accessors now raise ``GitProjectException`` naming the path that
+  was searched.
+- The Issues link on the PyPI project page returned 404. The URL named
+  ``unknown/greened`` instead of ``greened/git-project``, a leftover from
+  hatch's project template.
+- The PyPI long description stopped at the separator after the badges, so
+  everything from Installation on went unpublished. A second readme fragment
+  now carries the rest.
+- The Sphinx docs rendered no module documentation at all. ``automodule`` was
+  asked for ``git-project``, which is not an importable name; it now asks for
+  ``git_project``. No declared environment supplied Sphinx either, so a
+  ``docs`` environment with Sphinx is now declared.
 
 .. _Unreleased: https://github.com/greened/git-project/compare/v0.0.38...HEAD
 .. _0.0.38: https://github.com/greened/git-project/compare/v0.0.37...v0.0.38
