@@ -270,16 +270,6 @@ text = """
 `Full Changelog <https://github.com/greened/git-project/blob/master/docs/changelog.rst>`_
 """
 
-# Replace relative links with absolute.
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
-pattern = '(.+?)_:((?!https?://)\S+?)'
-replacement = '\1_:https://github.com/greened/git-project/tree/main/\g<2>'
-
-# Replace GitHub issue references with links.
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
-pattern = ":issue:`(\\d+)`"
-replacement = "#\\1_: https://github.com/greened/git-project/issues/\\1"
-
 [tool.hatch.metadata.hooks.requirements_txt]
 files = ["requirements.txt"]
 
