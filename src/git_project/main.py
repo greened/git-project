@@ -20,6 +20,31 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""The git-project run lifecycle.
+
+main runs git-project and turns the result into an exit status. main_impl
+does the work, in this order:
+
+#. Find the repository from the current directory, and check the config
+   file for repeated entries.
+#. Take the active project's name from the program name, with any ``git-``
+   prefix removed.
+#. Build the active Project.
+#. Load the plugins and call each one's ``add_class_hooks``, which receives
+   the project.
+#. Build the GitProject, now that the class hooks are in place.
+#. Parse the command line. Every plugin's ``add_arguments`` runs, then every
+   plugin's ``modify_arguments``. See git_project.commandline.
+#. Call each plugin's ``initialize``.
+#. Call the chosen command's ``func(git, gitproject, project, clargs)``.
+#. Check the config file again, and return what ``func`` returned.
+
+main exits with that value when it is an int, and with 0 otherwise. A
+GitProjectException prints its message and exits with a failure status. See
+git_project.plugin for what a plugin does at each step.
+
+"""
+
 import git_project
 
 import argparse

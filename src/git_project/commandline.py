@@ -68,8 +68,9 @@ def add_version_argument(parser, package):
                         help='Print version')
 
 def parse_arguments(git, gitproject, project, plugin_manager, args):
-    """Register plugin comand-line arguments.  Parse command-link arguments and
-    invoke command functions.
+    """Register plugin command-line arguments, then parse the command line and return
+    the result. Every plugin's add_arguments runs, then every plugin's
+    modify_arguments. The caller runs the chosen command's func.
 
     git: Git object to examine the repository.
 

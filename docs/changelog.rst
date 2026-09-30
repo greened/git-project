@@ -30,6 +30,11 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Added
+.....
+- A guide to writing plugins, in the ``git_project.plugin`` module
+  documentation, with the run lifecycle in ``git_project.main``.
+
 Changed
 .......
 - The PyPI description now ends with the newest release's changelog section
