@@ -20,19 +20,31 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""Helpers to run commands.
+
+run_command_with_shell passes the command string to a shell, so the shell
+parses it: quoting, pipes, redirection, globs and variables all work, and so
+does anything else a shell would do with the text. Quote any value you put
+into the string yourself.
+
+capture_command and iter_command do not use a shell. They split the string
+with shlex.split and run the result directly.
+
+"""
+
 import io
 import shlex
 import subprocess
 import tempfile
 
 def run_command_with_shell(command, dry_run=False, show_command=False):
-    """Run a command.
+    """Run a command through the shell and return its exit status.
 
-    command: The command to run.
+    command: The command to run, as one string for the shell to parse.
 
-    clargs: argparse-style command-line namespace.
+    dry_run: Print the command and do not run it. Return 0.
 
-    dry_run: Whether to just print actions.
+    show_command: Print the command before running it.
 
     """
 
@@ -54,11 +66,15 @@ def capture_command(command,
                     dry_run=False,
                     show_output=False,
                     show_error=True):
-    """Run a command and capture its standard output.
+    """Run a command and return its standard output as bytes. Raise an Exception
+    that holds the output and the standard error when it exits with a non-zero
+    status. With dry_run, print the command and return None.
 
-    command: The command to run.
+    command: The command to run. It is split with shlex.split, with no shell.
 
-    clargs: An argparse-style command-line namespace.
+    clargs: An argparse-style command-line namespace. When given, its dry_run
+    attribute can turn on a dry run, show_commands prints the command before
+    running it, and show_command_output can turn on show_output.
 
     dry_run: Whether to just print the command.
 
@@ -102,11 +118,14 @@ def capture_command(command,
         return out
 
 def iter_command(command, clargs=None):
-    """A generator that runs a command and yields its output line by line.
+    """A generator that runs a command and yields its output line by line, as text.
+    When the command exits with a non-zero status, raise an Exception that
+    holds the status and the standard error.
 
-    command: The command to run.
+    command: The command to run. It is split with shlex.split, with no shell.
 
-    clargs: An argparse-style command-line namespace.
+    clargs: An argparse-style command-line namespace. When given, its
+    show_commands prints the command first.
 
     """
     show_commands = False

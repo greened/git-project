@@ -36,7 +36,23 @@ from .shell import capture_command
 #
 class Git(object):
     """A facade over a lower-level interface to git providing interfaces needed to
-    implement git-project functionality."""
+    implement git-project functionality.
+
+    Git() attaches to the repository that holds the current directory, found
+    the way git finds it. Outside any repository it still builds: has_repo
+    answers False, and each method that needs the repository raises a
+    GitProjectException that names the directory searched. reinit attaches to
+    a different directory.
+
+    config wraps the repository's git config as sections and items. Config
+    objects read and write through it.
+
+    The remote operations authenticate with ssh when the repository's ssh.id
+    names a keypair, ~/.ssh/<id> and ~/.ssh/<id>.pub. The key must have no
+    passphrase, because git-project offers no passphrase and does not ask an
+    ssh agent. Without ssh.id no keypair is offered.
+
+    """
 
     @staticmethod
     def _ssh_credentials(ssh_id, username_from_url, allowed_types):
@@ -123,7 +139,7 @@ class Git(object):
 
                 @property
                 def key(self):
-                    """Return thee key for this entry.  The key is the name within a section for a
+                    """Return the key for this entry. The key is the name within a section for a
                     (multi-)value.
 
                     """
@@ -134,7 +150,7 @@ class Git(object):
                     return len(self._values) == 0
 
                 def itervalues(self):
-                    """Iterate over thee values of a multi-value key."""
+                    """Iterate over the values of a multi-value key."""
                     for value in self._values:
                         yield value
 
@@ -349,7 +365,7 @@ class Git(object):
             return section.has_item(key)
 
         def get_item(self, section_name, key):
-            """Get the valuee of the key in the named section."""
+            """Get the value of the key in the named section."""
             section = self.get_section(section_name)
             if not section:
                 return None
@@ -459,7 +475,10 @@ class Git(object):
             self._config = self.Config(self, self._repo.config)
 
     def get_ssh_id(self):
-        """Return the ssh ID to use for this repository."""
+        """Return the ssh ID to use for this repository, the value of ssh.id in the
+        git config. It names a keypair under ~/.ssh.
+
+        """
         return self.config.get_item('ssh', 'id')
 
     def is_bare_repository(self):
@@ -492,6 +511,11 @@ class Git(object):
         return None
 
     def workarea_is_clean(self):
+        """Return whether the working copy has no changes, staged, unstaged or
+        untracked. Ignored files do not count. A bare repository has no working
+        copy, so it counts as clean.
+
+        """
         if self.is_bare_repository():
             return True
 
@@ -755,7 +779,7 @@ class Git(object):
         self._repo.set_head(head_ref.id)
 
     def head_is_detached(self):
-        """Return whether HEAD is detched."""
+        """Return whether HEAD is detached."""
         return self._repo.head_is_detached
 
     def create_branch(self, branch_name, committish):

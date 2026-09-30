@@ -23,21 +23,24 @@
 from .configobj import ConfigObject
 
 class GitProject(ConfigObject):
-    """Manage the global git-project config."""
+    """Manage the git-project config that is not tied to a project.
+
+    It lives in the gitproject section of the repository's git config. Its
+    name key can hold several values, and iternames yields them.
+
+    """
 
     def __init__(self, git, section, subsection, ident):
-        """GitProject construction.  This should be treated as a private method and all
+        """GitProject construction. This should be treated as a private method and all
         construction should occur through the get method.
 
         git: An object to query the repository and make config changes.
 
-        project_section: git config section of the active project.
+        section: Always 'gitproject'.
 
-        subsection: An arbitrarily-long subsection appended to project_section
+        subsection: Always None.
 
-        ident: The name of this specific ConfigObject.
-
-        **kwargs: Keyword arguments of property values to set upon construction.
+        ident: Always None.
 
         """
         assert section == 'gitproject'
@@ -60,6 +63,6 @@ class GitProject(ConfigObject):
                            None)
 
     def iternames(self):
-        """Iteratte over the configured project names."""
+        """Iterate over the configured project names."""
         for name in self.iter_multival('name'):
             yield name

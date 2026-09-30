@@ -24,6 +24,13 @@ from pathlib import Path
 import sys
 
 class GitProjectException(Exception):
+    """An error to report to the user.
+
+    Raise it from a command for a failure the user can act on. git-project
+    prints message, which puts the program name in front, and exits with a
+    failure status. See git_project.main.
+
+    """
     def __init__(self, message):
         super().__init__(message)
         self._message = message

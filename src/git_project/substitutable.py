@@ -69,7 +69,7 @@ class SubstitutableConfigObject(ConfigObject):
 
         section: git config section of the active project.
 
-        subsection: An arbitrarily-long subsection appended to project_section
+        subsection: An arbitrarily-long subsection appended to section
 
         ident: The name of this specific ConfigObject.
 

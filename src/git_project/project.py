@@ -26,28 +26,35 @@ from .git import Git
 from .scopedobj import ScopedConfigObject
 
 class Project(ScopedConfigObject):
-    """A class representing a project section in the git config.  Each invocation of
+    """A class representing a project section in the git config. Each invocation of
     git-project has an 'active project' determined by the name through which
-    git-project was invoked.  An invocation of 'git-project' makes 'project' the
+    git-project was invoked. An invocation of 'git-project' makes 'project' the
     active project while an invocation via a link will make the link name the
-    active project.  For example a link named 'git-fizzbin' would make "fizzbin'
+    active project. For example a link named 'git-fizzbin' would make 'fizzbin'
     the active project.
+
+    A project is the base of the scope chain. Plugins push their scopes onto
+    it, so reading a project attribute gives the value from the topmost scope
+    that has it. See git_project.scopedobj.
+
+    Building a project sets the defaults branch and remote when they are
+    missing. See set_defaults.
 
     """
 
     def __init__(self, git, section, subsection, ident, **kwargs):
-        """Project construction.  This should be treated as a private method and all
+        """Project construction. This should be treated as a private method and all
         construction should occur through the get method.
 
         git: An object to query the repository and make config changes.
 
-        project_section: git config section of the active project.
+        section: git config section of the active project.
 
-        subsection: An arbitrarily-long subsection appended to project_section
+        subsection: An arbitrarily-long subsection appended to section
 
         ident: The name of this specific ConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon construction.
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
         super().__init__(git, section, subsection, ident, **kwargs)
@@ -62,7 +69,10 @@ class Project(ScopedConfigObject):
 
         git: An object to query the repository and make config changes.
 
-        section: git config for this Project.
+        section: The project name. It is mapped to a git config section name, so
+        '.' and '_' become '-'.
+
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
         project = super().get(git,
@@ -73,6 +83,11 @@ class Project(ScopedConfigObject):
         return project
 
     def set_defaults(self):
+        """Set the defaults that are missing. branch is the repository's main
+        branch, when git can tell which that is, and remote is 'origin'. Do
+        nothing outside a repository.
+
+        """
         if self._git.has_repo():
             if not self.has_item('branch'):
                 main = self._git.get_main_branch()
@@ -85,7 +100,7 @@ class Project(ScopedConfigObject):
         """Add a remote for this project.  All branches for this project are checked
         against all remotes for the project to determine their pushed state.  A
         branch prune is allowed for any merged branch whose target has been
-        pushed to at least one remote..
+        pushed to at least one remote.
 
         remote: The remote to add.
 
@@ -102,7 +117,7 @@ class Project(ScopedConfigObject):
         'authoritative' for the project, in that branch merge checks are made
         against each project branch.  On other words a branch is considered
         'finished' if it is merged to a project branch and that branch has been
-        pushed to a project remote."  self.add_item('branch', branch)
+        pushed to a project remote.
 
         branch: The branch to add.
 
@@ -120,7 +135,7 @@ class Project(ScopedConfigObject):
 
     def iterrefnames(self):
         """Iterate over all of the refnames for project branches and remotes.  This is
-        used to check for merged and pushed status o branches.
+        used to check for merged and pushed status of branches.
 
         """
         if self._git.has_repo():
@@ -136,7 +151,7 @@ class Project(ScopedConfigObject):
     def branch_is_merged_remotely(self, committish):
         """Return whether the given committish is merged to a remote project branch.
 
-        committish: The committish to checl
+        committish: The committish to check
 
         """
         refname = self._git.committish_to_refname(committish)

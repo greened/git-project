@@ -94,6 +94,10 @@ Git
 Shell commands
 --------------
 
+.. automodule:: git_project.shell
+
+.. currentmodule:: git_project
+
 .. autofunction:: run_command_with_shell
 
 .. autofunction:: iter_command
