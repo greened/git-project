@@ -249,18 +249,26 @@ text = "\n"
 path = "docs/authors.rst"
 end-before = "A full list of contributors"
 
-#[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
-#path = "docs/changelog.rst"
-#pattern = '(\d+\.\d+\.\d+.+?\n)\d+'
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+text = "\n"
 
-#[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
-#text = """
-#---
-#
-#`→ Full Changelog`_:docs/changelog.rst
-#
-#
-#"""
+# The newest release section. It ends at the next release heading or at the
+# link targets.
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "docs/changelog.rst"
+pattern = '\n(`\d+\.\d+\.\d+`_ - .+?\n)\n*(?:`\d+\.\d+\.\d+`_ - |\.\. _)'
+
+# The heading is a link reference. Its target must move with it, or the
+# description does not render.
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "docs/changelog.rst"
+pattern = '\n(\n\.\. _\S+: .*)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+text = """
+
+`Full Changelog <https://github.com/greened/git-project/blob/master/docs/changelog.rst>`_
+"""
 
 # Replace relative links with absolute.
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]

@@ -30,6 +30,10 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Changed
+.......
+- The PyPI description now ends with the newest release's changelog section
+  and a link to the full changelog.
 
 `0.0.38`_ - 2026-09-24
 ----------------------
