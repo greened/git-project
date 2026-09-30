@@ -56,6 +56,9 @@ Fixed
 - ``ParserManager.get_or_add_parser`` passed its name and key to
   ``add_parser`` in the wrong order. A parser it created was registered under
   the name and shown to the user as the key.
+- A project whose name contains ``.`` or ``_``, such as one run through a
+  ``git-fizz_bin`` link, lost its settings between runs. Its values were
+  written to the ``fizz-bin`` section but read back from ``fizz_bin``.
 
 `0.0.38`_ - 2026-09-24
 ----------------------

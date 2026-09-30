@@ -49,17 +49,7 @@ class ConfigObject(object):
 
         """
 
-        # We don't want the section to introduce subsections, so translate . to
-        # -.  Since underscore is not allowed in a config key, translate them to -
-        # as well.
-
-        tr_table = project_section.maketrans('._', '--')
-        project_section = project_section.translate(tr_table)
-
-        # Also with pygit2 the key can't start with - so prepend a legal string.
-
-        if project_section.startswith('-'):
-            project_section = 'ZZ' + project_section
+        project_section = ConfigObject._map_project_section(project_section)
 
         self._git = git
         self._project_section = project_section
@@ -109,9 +99,10 @@ class ConfigObject(object):
         """
         inits = dict()
 
-        gitsection = ConfigObject._get_full_section(project_section,
-                                                    subsection,
-                                                    ident)
+        gitsection = ConfigObject._get_full_section(
+            ConfigObject._map_project_section(project_section),
+            subsection,
+            ident)
         if git.has_repo():
             config_section = git.config.get_section(gitsection)
             if config_section:
@@ -155,12 +146,34 @@ class ConfigObject(object):
         if not git.has_repo():
             return False
 
-        gitsection = ConfigObject._get_full_section(project_section,
-                                                    subsection,
-                                                    ident)
+        gitsection = ConfigObject._get_full_section(
+            ConfigObject._map_project_section(project_section),
+            subsection,
+            ident)
 
         section = git.config.get_section(gitsection)
         return True if section else False
+
+    @staticmethod
+    def _map_project_section(project_section):
+        """Return the git config section name for project_section. get, exists and
+        construction must all use it, or a project whose name contains '.' or
+        '_' writes one section and reads another.
+
+        """
+        # We don't want the section to introduce subsections, so translate . to
+        # -. Since underscore is not allowed in a config key, translate them to -
+        # as well.
+
+        tr_table = project_section.maketrans('._', '--')
+        project_section = project_section.translate(tr_table)
+
+        # Also with pygit2 the key can't start with - so prepend a legal string.
+
+        if project_section.startswith('-'):
+            project_section = 'ZZ' + project_section
+
+        return project_section
 
     @staticmethod
     def _get_full_section(section, subsection, ident):

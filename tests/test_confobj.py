@@ -258,3 +258,26 @@ def test_confobj_get_no_dup(reset_directory, git):
     check_config_file('project.mything.test',
                       'second',
                       {'seconddefault', 'secondsecond', 'secondthird'})
+
+def test_confobj_mapped_section_reloads(reset_directory, git):
+    # A project name with '.' or '_' maps to a section with '-'. Writing and
+    # reading must agree on that section.
+    #
+    # Setting a value adds a property to the writer's class, and that property
+    # reads the config itself. So write and read through sibling classes: the
+    # reader has no property yet, as in a fresh run, and only get() can load
+    # the value.
+    class Writer(git_project.ConfigObject):
+        pass
+
+    class Reader(git_project.ConfigObject):
+        pass
+
+    thing = Writer.get(git, 'fizz_bin.x', 'thing', 'one')
+    thing.color = 'blue'
+
+    assert thing.get_section() == 'fizz-bin-x.thing.one'
+    assert git_project.ConfigObject.exists(git, 'fizz_bin.x', 'thing', 'one')
+
+    again = Reader.get(git, 'fizz_bin.x', 'thing', 'one')
+    assert again.color == 'blue'
