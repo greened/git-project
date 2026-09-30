@@ -18,20 +18,25 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-"""git-project: Manage project work.
+"""git-project manages development work in a git repository.
 
-Summary:
+Usage:
 
-git project <command> [<options>]
+  git <project> <command> [<options>]
 
-Commands are registered by plugins and show with 'git project --help.'  Each
-command also has a --help option to explore workings of th command.
+git-project itself provides only -h (--help), --version and --menu. Plugins
+add the commands, and each command has its own --help. With the core plugins
+installed, 'git <project> help <command>' shows the full manual for a
+command.
 
-Users may link to git-project with a name appropriate to the project (for
-example, git-fizzbin to invoke as 'git fizzbin <command> [<options>]).
-git-project will then place all configuration in a section named after the link
-('fizzbin' in this case).  This way one may have multiple projects active in a
-single repository by invoking git-project via various links.
+Through git, ask for this text with 'git <project> -h'. Git turns
+'git <project> --help' into a request for a man page, which does not exist.
+
+The name git-project runs under selects the active project. Link
+git-fizzbin to git-project, run it as 'git fizzbin <command>', and
+git-project keeps that project's settings in the git config section named
+'fizzbin'. Several links give several projects in one repository. Run as
+git-project itself, the active project is 'project'.
 
 """
 
@@ -78,6 +83,7 @@ def parse_arguments(git, gitproject, project, plugin_manager, args):
     parser_manager = ParserManager(gitproject, project)
 
     parser = parser_manager.find_parser('__main__')
+    parser.parser.description = __doc__
 
     # --version
     add_version_argument(parser, 'git-project')

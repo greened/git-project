@@ -241,8 +241,7 @@ class ParserManager(object):
 
         """
         self.__dict__ = ParserManager._shared_state
-        parser = argparse.ArgumentParser(description=__doc__,
-                                         formatter_class=argparse.RawDescriptionHelpFormatter)
+        parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
         self.main_parser = self.Parser('__main__', parser)
         self.registered_subparsers = set()
         self.registered_parsers = {'__main__'}

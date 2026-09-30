@@ -34,6 +34,9 @@ Changed
 .......
 - The PyPI description now ends with the newest release's changelog section
   and a link to the full changelog.
+- ``git <project> -h`` now opens with a summary of git-project and of how the
+  link name selects a project. It showed only the usage and the arguments
+  before.
 
 Fixed
 .....

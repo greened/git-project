@@ -24,6 +24,7 @@ import git_project
 from git_project.test_support import check_config_file
 
 import os
+import pytest
 from pathlib import Path
 import shutil
 
@@ -53,3 +54,11 @@ def test_main_no_dup(reset_directory, git, project):
     check_config_file('project',
                       'build',
                       {'devrel', 'check-devrel'})
+
+def test_main_help_shows_summary(reset_directory, git, capsys):
+    with pytest.raises(SystemExit):
+        git_project.main_impl(['--help'])
+
+    out = capsys.readouterr().out
+    assert 'git <project> <command> [<options>]' in out
+    assert 'The name git-project runs under selects the active project.' in out
