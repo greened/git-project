@@ -42,6 +42,9 @@ Fixed
   its source headers and ``pyproject.toml`` already said.
 - The package description now says how to create the ``git-<project>`` link
   that selects a project.
+- ``ScopedConfigObject.get_scope`` found only the topmost scope. With more
+  than one scope pushed, a lower scope was never found, so a ``{name}``
+  substitution naming it could not be resolved.
 
 `0.0.38`_ - 2026-09-24
 ----------------------

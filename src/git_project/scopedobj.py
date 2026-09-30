@@ -40,6 +40,7 @@ class ScopedConfigObject(ConfigObject):
     @staticmethod
     def _is_unscoped(name):
         unscoped_items = {'unscoped',
+                          'get_scope',
                           'pop_scope',
                           'get_ident',
                           'get_section',
@@ -194,14 +195,16 @@ class ScopedConfigObject(ConfigObject):
         # See if the child is what we're looking for.  This effectively starts
         # the search at the topmost scope.
         try:
-            scope = self.unscoped('_child').get_scope()
-
-            if scope:
-                # It was some child.
-                return scope
+            child = self.unscoped('_child')
         except AttributeError:
             # No child scope
-            pass
+            child = None
+
+        if child is not None:
+            scope = child.get_scope(subsection)
+            if scope is not None:
+                # It was some child.
+                return scope
 
         if self.get_subsection() == subsection:
             # It's us!

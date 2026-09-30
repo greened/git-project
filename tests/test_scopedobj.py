@@ -181,3 +181,36 @@ def test_scopedobj_iteritems_multi(reset_directory, git):
     assert result == {('name', 'parent'),
                       ('value', 'ParentScope'),
                       ('parentonly', 'ParentOnly')}
+
+class OtherScope(ScopedConfigObject):
+    def __init__(self, git, project_section, subsection, name):
+        super().__init__(git,
+                         project_section,
+                         subsection,
+                         name,
+                         name=name)
+
+    @classmethod
+    def get(cls, git, project_section, ident, **kwargs):
+        return super().get(git,
+                           project_section,
+                           'otherscope',
+                           ident,
+                           **kwargs)
+
+def test_scopedobj_get_scope(reset_directory, git):
+    parent = ParentScope.get(git, 'project', 'parent')
+    child = ChildScope.get(git, 'project', 'child')
+    other = OtherScope.get(git, 'project', 'other')
+
+    assert parent.get_scope('parentscope') is parent
+    assert parent.get_scope('childscope') is None
+
+    parent.push_scope(child)
+    parent.push_scope(other)
+
+    # A scope below the topmost one must still be found.
+    assert parent.get_scope('otherscope') is other
+    assert parent.get_scope('childscope') is child
+    assert parent.get_scope('parentscope') is parent
+    assert parent.get_scope('nosuchscope') is None
