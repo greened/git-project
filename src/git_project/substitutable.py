@@ -20,6 +20,34 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""Config objects whose values can be substituted.
+
+``SubstitutableConfigObject.substitute_value`` expands ``{name}`` in a
+string. The package documentation describes the names and the syntax for
+users. This is what a caller needs on top of that.
+
+The names come from four places, and a later one wins over an earlier one:
+
+#. the ``formats`` mapping the caller passes
+#. the project's items, read through its active scopes. If the project has
+   a key with the same name as this object's subsection, that name gives
+   this object's ident instead.
+#. this object's own items
+#. the built-in names ``project``, ``gitdir``, ``git_common_dir``,
+   ``git_workdir`` and ``branch``
+
+A name that none of them define is looked up as a scope name through
+``get_scope``, and gives that scope's ident.
+
+``substitute_value`` adds its names to ``formats``, so pass a new dict each
+time.
+
+The string is evaluated as a Python f-string with these names as its
+globals, again and again until it stops changing. So substitution runs any
+Python expression in braces. Treat config values as code.
+
+"""
+
 from pathlib import Path
 
 from .configobj import ConfigObject
@@ -33,18 +61,19 @@ class SubstitutableConfigObject(ConfigObject):
 
     """
     def __init__(self, git, section, subsection, ident, **kwargs):
-        """RunnableConfigObject construction.  This should be treated as a private
-        method and all construction should occur through the get method.
+        """SubstitutableConfigObject construction. This should be treated as a
+        private method and all construction should occur through the get
+        method.
 
         git: An object to query the repository and make config changes.
 
-        project_section: git config section of the active project.
+        section: git config section of the active project.
 
         subsection: An arbitrarily-long subsection appended to project_section
 
         ident: The name of this specific ConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon construction.
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
         super().__init__(git, section, subsection, ident, **kwargs)
@@ -58,6 +87,9 @@ class SubstitutableConfigObject(ConfigObject):
         project: The currently active Project.
 
         string: The string on which to perform substitution.
+
+        formats: Extra names for substitution, with the lowest precedence.
+        substitute_value adds to it, so pass a new dict.
 
         """
         found_path = False

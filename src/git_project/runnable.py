@@ -20,6 +20,15 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""Config objects that run a command.
+
+A runnable config object has a ``command`` item. ``run`` substitutes it,
+prints the result, runs it through the shell and returns the shell's exit
+status. The run plugin in git-project-core-plugins builds a runnable class
+for each run alias, such as ``build``.
+
+"""
+
 from pathlib import Path
 
 from .substitutable import SubstitutableConfigObject
@@ -38,13 +47,13 @@ class RunnableConfigObject(SubstitutableConfigObject):
 
         git: An object to query the repository and make config changes.
 
-        project_section: git config section of the active project.
+        section: git config section of the active project.
 
         subsection: An arbitrarily-long subsection appended to project_section
 
         ident: The name of this specific ConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon construction.
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
         super().__init__(git, section, subsection, ident, **kwargs)
@@ -61,11 +70,14 @@ class RunnableConfigObject(SubstitutableConfigObject):
         return self.substitute_value(git, project, self.command, formats)
 
     def run(self, git, project, formats=dict()):
-        """Do variable substitution and run the resulting command.
+        """Do variable substitution, print the command and run it through the shell.
+        Return the shell's exit status.
 
         git: An object to query the repository and make config changes.
 
         project: The currently active Project.
+
+        formats: Extra names for substitution. See substitute_value.
 
         """
         command = self.substitute_command(git, project, formats)

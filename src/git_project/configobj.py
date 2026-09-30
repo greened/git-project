@@ -20,13 +20,41 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""Objects stored in the git config.
+
+A config object is a Python object whose attributes live in the repository's
+git config. Each object owns one section, named
+``<project>.<subsection>.<ident>``, with any empty part left out. The
+project part is mapped so that it cannot add a subsection of its own: ``.``
+and ``_`` become ``-``, and a leading ``-`` gets a ``ZZ`` prefix.
+
+Build an object with the ``get`` classmethod, not the constructor. ``get``
+loads the values the section already holds, then applies its keyword
+arguments on top.
+
+Setting an attribute writes it to the config at once, and reading it reads
+the config. Values must be strings. ``add_item`` adds a value to a key
+instead of replacing it, which makes a key with several values. Read back, a
+key with several values gives a ``frozenset``.
+
+The attributes are properties on the class, not on the instance. The first
+time a class sets a key, the class gains a property for it, and every
+instance then reads that key from its own section. ``has_item`` tells
+whether this object's section holds a key, which ``hasattr`` cannot.
+
+A subclass that a command manages overrides ``get_managing_command`` to name
+that command.
+
+"""
+
 import collections
 import inspect
 
 class ConfigObject(object):
-    """Base class for objects that use git-config as a backing store.  Specified
+    """Base class for objects that use git-config as a backing store. Specified
     property values are saved to the git config file and read from the config
-    file upon instantiation.
+    file upon instantiation. See the module documentation for how sections,
+    properties and multi-value keys work.
     """
     def __init__(self,
                  git,

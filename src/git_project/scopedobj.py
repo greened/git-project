@@ -20,6 +20,33 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""Config objects with scopes.
+
+A scoped config object can have a chain of child *scopes*, each itself a
+scoped config object. ``push_scope`` puts a new scope on top of the chain,
+and ``pop_scope`` takes the top one off. A plugin uses a scope to let a
+narrower section override the project. For example, the worktree plugin in
+git-project-core-plugins pushes the current worktree's object onto the
+project.
+
+Reads are scoped. Reading an attribute gives the value from the topmost
+scope that has it, or else from the object itself. The search starts at the
+top whichever object in the chain is asked, so a caller need not know which
+scope is on top. Writes are not scoped: setting an attribute writes to the
+object it is set on.
+
+Every attribute is looked up this way, methods included. The exceptions are
+names that start with ``_`` and the names that ``_is_unscoped`` lists. So a
+method called on a scoped object runs the topmost scope's method of that
+name, when a scope has one. A method that must run on the object it is
+called on belongs in that list. ``unscoped(name)`` reads one attribute with
+no scope search.
+
+``get_scope(subsection)`` returns the scope in the chain that has that
+subsection, or ``None``.
+
+"""
+
 import inspect
 
 from .configobj import ConfigObject
@@ -57,13 +84,12 @@ class ScopedConfigObject(ConfigObject):
         return name in unscoped_items
 
     def __init__(self, git, section, subsection, ident, **kwargs):
-        """ScopedConfigObject construction.
-
-        cls: The derived class being constructed.
+        """ScopedConfigObject construction. This should be treated as a private
+        method and all construction should occur through the get method.
 
         git: An object to query the repository and make config changes.
 
-        project_section: git config section of the active project.
+        section: git config section of the active project.
 
         subsection: An arbitrarily-long subsection appended to project_section
 

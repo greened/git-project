@@ -34,6 +34,16 @@ API reference
 Configuration objects
 ---------------------
 
+.. automodule:: git_project.configobj
+
+.. automodule:: git_project.scopedobj
+
+.. automodule:: git_project.substitutable
+
+.. automodule:: git_project.runnable
+
+.. currentmodule:: git_project
+
 .. autoclass:: ConfigObject
    :members:
 
