@@ -23,6 +23,7 @@
 import io
 import shlex
 import subprocess
+import tempfile
 
 def run_command_with_shell(command, dry_run=False, show_command=False):
     """Run a command.
@@ -116,12 +117,19 @@ def iter_command(command, clargs=None):
         print(command)
 
     cmd_args = shlex.split(command)
-    proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    for line in io.TextIOWrapper(proc.stdout):
-        yield line
 
-    rc = proc.poll()
+    # Stderr goes to a file rather than a pipe. A pipe nobody reads until the
+    # end fills up, and the command then blocks before it closes stdout.
+    with tempfile.TemporaryFile() as errfile:
+        proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
+                                stderr=errfile)
+        for line in io.TextIOWrapper(proc.stdout):
+            yield line
 
-    if rc != 0:
-        raise Exception('{}: Process exited with code {}\nSTDOUT: {}\nSTDERR: {}'.format(command, rc, out, err))
+        # Wait, because poll() returns None until the process is reaped.
+        rc = proc.wait()
+
+        if rc != 0:
+            errfile.seek(0)
+            err = errfile.read().decode(errors='replace')
+            raise Exception('{}: Process exited with code {}\nSTDERR: {}'.format(command, rc, err))

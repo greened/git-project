@@ -59,6 +59,10 @@ Fixed
 - A project whose name contains ``.`` or ``_``, such as one run through a
   ``git-fizz_bin`` link, lost its settings between runs. Its values were
   written to the ``fizz-bin`` section but read back from ``fizz_bin``.
+- ``iter_command`` raised ``NameError`` instead of running. Its exit check
+  read the status before the process had finished and then named two
+  variables that do not exist. It now waits for the command, and a failure
+  reports the exit status and the command's standard error.
 
 `0.0.38`_ - 2026-09-24
 ----------------------
