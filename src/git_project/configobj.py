@@ -45,7 +45,7 @@ class ConfigObject(object):
 
         ident: The name of this specific ConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon construction.
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
 
@@ -104,7 +104,7 @@ class ConfigObject(object):
 
         ident: The name of this specific ConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon construction.
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
         inits = dict()

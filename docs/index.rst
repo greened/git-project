@@ -34,6 +34,7 @@ Welcome to git-project's documentation!
    :caption: Contents:
 
    intro.rst
+   api.rst
    authors.rst
    changelog.rst
    license.rst

@@ -69,7 +69,7 @@ class ScopedConfigObject(ConfigObject):
 
         ident: The name of this specific ScopedConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon construction.
+        kwargs: Keyword arguments of property values to set upon construction.
 
         """
         super().__init__(git, section, subsection, ident, **kwargs)
@@ -98,7 +98,7 @@ class ScopedConfigObject(ConfigObject):
 
         ident: The name of this specific ConfigObject.
 
-        **kwargs: Keyword arguments of property values to set upon
+        kwargs: Keyword arguments of property values to set upon
           construction.
 
         """
