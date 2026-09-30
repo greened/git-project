@@ -328,7 +328,7 @@ class ParserManager(object):
 
         parser = self.find_parser(key)
         if not parser:
-            parser = self.add_parser(subparser, key, name, **kwargs)
+            parser = self.add_parser(subparser, name, key, **kwargs)
 
         return parser
 

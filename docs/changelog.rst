@@ -45,6 +45,9 @@ Fixed
 - ``ScopedConfigObject.get_scope`` found only the topmost scope. With more
   than one scope pushed, a lower scope was never found, so a ``{name}``
   substitution naming it could not be resolved.
+- ``ParserManager.get_or_add_parser`` passed its name and key to
+  ``add_parser`` in the wrong order. A parser it created was registered under
+  the name and shown to the user as the key.
 
 `0.0.38`_ - 2026-09-24
 ----------------------
