@@ -55,13 +55,17 @@ basic functionality and should almost always be installed alongside git-project.
 Conventions
 ===========
 
-Symlinks identiy projects to the ``git-project`` command.  For example, if
+Symlinks identify projects to the ``git-project`` command. For example, if
 ``git-fizzbin`` is symlinked to ``git-project``, then ``git fizzbin <command>``
-will invoke ``git-project`` with ``fizzbin`` as the "active project."  To
+will invoke ``git-project`` with ``fizzbin`` as the "active project." To
 emphasize this, we show git-project commands with a generic ``<project>``
 identifier::
 
   git <project> --help
+
+Create the link yourself, in a directory on your ``PATH``::
+
+  ln -s "$(command -v git-project)" ~/.local/bin/git-fizzbin
 
 Discussion
 ==========
@@ -104,9 +108,9 @@ commands and plugins can use:
 
 License
 =======
-`git-project` is distributed under the terms of the `GNU General Public License v3.0 or later`_.
+`git-project` is distributed under the terms of the `GNU Affero General Public License v3.0 or later`_.
 
-.. _`GNU General Public License v3.0 or later`: https://spdx.org/licenses/GPL-3.0-or-later.html
+.. _`GNU Affero General Public License v3.0 or later`: https://spdx.org/licenses/AGPL-3.0-or-later.html
 
 """
 

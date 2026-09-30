@@ -35,6 +35,14 @@ Changed
 - The PyPI description now ends with the newest release's changelog section
   and a link to the full changelog.
 
+Fixed
+.....
+- The package description named the GNU General Public License. git-project
+  is licensed under the GNU Affero General Public License v3.0 or later, as
+  its source headers and ``pyproject.toml`` already said.
+- The package description now says how to create the ``git-<project>`` link
+  that selects a project.
+
 `0.0.38`_ - 2026-09-24
 ----------------------
 Added
