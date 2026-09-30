@@ -37,6 +37,11 @@ Changed
 - ``git <project> -h`` now opens with a summary of git-project and of how the
   link name selects a project. It showed only the usage and the arguments
   before.
+- The package description is rewritten. It now explains projects,
+  configuration, scopes and substitution, and it warns that a substituted
+  value is evaluated as Python. It also says to ask for help with
+  ``git <project> -h``, because git sends ``git <project> --help`` to a man
+  page.
 
 Fixed
 .....

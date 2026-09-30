@@ -41,70 +41,124 @@ Installation
    pip install git-project
    pip install git-project-core-plugins
 
-Description
-===========
+git-project needs Python 3.10 or later.
 
-git-project is a git extension to manage development of a project hosted in a
-git repository.  By itself git-project does almost nothing.  Its functionality
-is enhanced by plugins.
+Overview
+========
+
+git-project is a git extension for managing development work in a git
+repository. By itself it does almost nothing. It provides ``-h``,
+``--version`` and ``--menu``, and plugins provide the commands.
 
 `git-project-core-plugins
-<http://www.github.com/greened/git-project-core-plugins>`_ provides a set of
-basic functionality and should almost always be installed alongside git-project.
+<https://github.com/greened/git-project-core-plugins>`_ provides the basic
+commands, among them ``clone``, ``init``, ``worktree``, ``branch``, ``run``
+and ``config``. Install it alongside git-project.
 
-Conventions
-===========
+git-project aims to make switching between tasks in a repository fast,
+without losing the state of the tasks you set aside. For example, the core
+plugins can give each worktree its own build directory, so moving to another
+worktree does not rebuild everything.
 
-Symlinks identify projects to the ``git-project`` command. For example, if
-``git-fizzbin`` is symlinked to ``git-project``, then ``git fizzbin <command>``
-will invoke ``git-project`` with ``fizzbin`` as the "active project." To
-emphasize this, we show git-project commands with a generic ``<project>``
-identifier::
+Projects
+========
 
-  git <project> --help
+git-project runs under the name of a link to it, and that name selects the
+*active project*. If ``git-fizzbin`` is a symlink to ``git-project``, then
+``git fizzbin <command>`` runs git-project with ``fizzbin`` as the active
+project. Run as ``git-project`` itself, the active project is ``project``.
+These docs write ``git <project>`` for whichever name you use.
 
 Create the link yourself, in a directory on your ``PATH``::
 
   ln -s "$(command -v git-project)" ~/.local/bin/git-fizzbin
 
-Discussion
-==========
+Each project keeps its settings apart from the others, so one repository can
+hold several projects, each run through its own link.
 
-With git-project and its core plugins you can:
+Configuration
+=============
 
-* Initialize a development environment at clone time (or after clone time)
-* Manage branches
-* Manage worktrees
-* Set and invoke commands
+git-project stores its settings in the repository's git config. A project's
+settings live in a section named after the project. git-project changes
+``.`` and ``_`` in the name to ``-``, so the project ``fizz_bin`` uses the
+section ``fizz-bin``.
 
-git-project is intended to make switching between active 'tasks' in a repository
-simple and fast, without losing the progress context of existing tasks.  For
-example the core plugins set up build environments such that switching among
-projects and worktrees does not result in "rebuilding the world."  Builds can be
-configured to invoke complex commands via a convenient name (e.g. ``git
-<project> build debug``)
+Whenever they are missing, git-project sets two values in the project
+section: ``branch``, the repository's main branch, and ``remote``, which is
+``origin``.
 
-Substitution variables
-======================
+Plugins keep their own settings in subsections of the project section. For
+example, a project with one worktree might hold::
 
-Commands that allow substitution take a form ``{varname}`` in their configured
-textual representation and substitute it with the value of ``varname``.
-``varname`` can be any configured value under ``<project>``, for example::
+  [fizzbin]
+      branch = main
+      remote = origin
+      srcdir = /src
+  [fizzbin "worktree.main"]
+      builddir = {srcdir}/build
 
-    [project]
-        myvar = value
+A key can hold more than one value. On every run, git-project also checks
+the config file and stops if one section holds the same ``key = value`` line
+twice.
 
-``git-project`` has several built-in substitution variables that various
-commands and plugins can use:
+Scopes
+======
 
-``branch``
-    The name of the currently checked-out branch
-``gitdir``
-    The value of ``GITDIR``
-``git_common_dir``
-    The value of ``GIT_COMMON_DIR``
+A *scope* is a subsection that a plugin makes active for the current run.
+While a scope is active, a value set in the scope overrides the same key in
+the project section. For example, when you run inside a worktree, the core
+plugins' ``worktree`` plugin makes that worktree's subsection a scope. A
+value set for one worktree then applies only there.
+
+The name of an active scope is also a substitution variable, and its value
+is the scope's identifier. In the example above, ``{worktree}`` is ``main``
+inside the ``main`` worktree.
+
+Substitution
+============
+
+Some values are *substituted* before they are used, for example the
+commands that the ``run`` plugin runs. Substitution replaces ``{name}`` with
+the value of ``name``. A name can be:
+
+* a key in the project section
+* a key in the object being substituted, or in an active scope
+* the name of an active scope, as above
+* one of these built-in names
+
 ``project``
-    The value of ``<project>``
+    The active project's section name
+``branch``
+    The checked-out branch, or during a rebase the branch being rebased
+``gitdir``
+    The repository's git directory
+``git_common_dir``
+    The git directory that all worktrees share
+``git_workdir``
+    The root of the current worktree
+
+Substitution repeats until the value stops changing, so a value can name
+another value that itself contains ``{name}``. A value may not name itself.
+To write a literal brace, write ``{{}`` for ``{`` and ``{}}`` for ``}``.
+
+**A value is evaluated as Python.** git-project substitutes a value by
+evaluating it as a Python f-string. So ``{1+1}`` becomes ``2``, and any
+Python expression in braces runs when the value is substituted. Treat the
+git config as code, and do not include config from a source you do not
+trust. A value that contains a ``'`` cannot be substituted.
+
+Getting help
+============
+
+``git <project> -h`` lists the commands that the installed plugins provide.
+Use ``-h`` there, because git turns ``git <project> --help`` into a request
+for a man page. After a command name ``--help`` works as usual, and with the
+core plugins installed ``git <project> help <command>`` shows a command's
+full manual.
+
+``--menu`` lists a command's subcommands, arguments and options in a form meant
+for tools.
 
 License
 =======
