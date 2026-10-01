@@ -34,6 +34,8 @@ Added
 .....
 - A guide to writing plugins, in the ``git_project.plugin`` module
   documentation, with the run lifecycle in ``git_project.main``.
+- A guide to working on git-project itself, in the ``git_project._contributing``
+  module documentation.
 
 Changed
 .......

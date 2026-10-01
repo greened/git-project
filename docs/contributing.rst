@@ -1,11 +1,11 @@
 ..
-    SPDX-FileCopyrightText: 2023-present David A. Greene <dag@obbligato.org>
+    SPDX-FileCopyrightText: 2026-present David A. Greene <dag@obbligato.org>
 
 ..
     SPDX-License-Identifier: AGPL-3.0-or-later
 
 ..
-    Copyright 2023 David A. Greene
+    Copyright 2026 David A. Greene
 
 ..
     This file is part of git-project
@@ -26,24 +26,4 @@
     You should have received a copy of the GNU Affero General Public License
     along with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-Welcome to git-project's documentation!
-=======================================
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   intro.rst
-   plugins.rst
-   contributing.rst
-   api.rst
-   authors.rst
-   changelog.rst
-   license.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. automodule:: git_project._contributing
