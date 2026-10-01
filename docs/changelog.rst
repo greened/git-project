@@ -30,6 +30,9 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+
+`0.0.39`_ - 2026-09-30
+----------------------
 Added
 .....
 - A guide to writing plugins, in the ``git_project.plugin`` module
@@ -120,5 +123,6 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.38...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.39...HEAD
+.. _0.0.39: https://github.com/greened/git-project/compare/v0.0.38...v0.0.39
 .. _0.0.38: https://github.com/greened/git-project/compare/v0.0.37...v0.0.38
