@@ -252,6 +252,20 @@ def test_git_config(reset_directory, local_repository):
     assert check_lines('testrm4', 'one', '1', section_present=False, key_present=False)
     assert check_lines('testrm4', 'one', '2', section_present=False, key_present=False)
 
+def test_git_config_rm_item_with_space(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+    config = git.config
+
+    config.set_item('testspace', 'cmd', 'make')
+    config.add_item('testspace', 'cmd', 'cd build && make')
+
+    config.rm_item('testspace', 'cmd', 'cd build && make')
+
+    assert list(config.iter_multival('testspace', 'cmd')) == ['make']
+    assert list(git_project.Git().config.iter_multival('testspace', 'cmd')) == ['make']
+
 def test_git_is_bare_repository(reset_directory,
                                 remote_repository,
                                 local_repository):

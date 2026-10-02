@@ -267,7 +267,8 @@ class Git(object):
                 # No pygit2 interface for this.
                 prev_dir = Path.cwd()
                 os.chdir(self._git._repo.path)
-                capture_command(f'git config --unset-all {self.itemname(key)}')
+                capture_command(['git', 'config', '--unset-all',
+                                 self.itemname(key)])
                 os.chdir(prev_dir)
 
             def rm_item(self, key, pattern):
@@ -282,13 +283,14 @@ class Git(object):
                 # No pygit2 interface for this.
                 prev_dir = Path.cwd()
                 os.chdir(self._git._repo.path)
-                capture_command(f'git config --unset {self.itemname(key)} {pattern}')
+                capture_command(['git', 'config', '--unset',
+                                 self.itemname(key), pattern])
                 os.chdir(prev_dir)
 
             # No pygit2 interface for this.
             def rm(self):
                 """Remove this entire section from the config."""
-                capture_command(f'git config --remove-section {self.name}')
+                capture_command(['git', 'config', '--remove-section', self.name])
 
         def __init__(self, git, config):
             self._git = git

@@ -30,8 +30,16 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Added
+.....
+- ``capture_command`` takes a list of arguments as well as a string.
+
 Fixed
 .....
+- Removing one value of a config key failed when the value held a space.
+  It was split into several arguments to ``git config --unset``. The pattern
+  now reaches git as given, so a pattern escaped twice to get through that
+  split must be escaped once.
 - ``Git.get_git_common_dir`` returns an absolute path in a worktree that plain
   ``git worktree add`` made. It returned the relative path that git writes, so
   ``{git_common_dir}`` substituted ``../..`` there.

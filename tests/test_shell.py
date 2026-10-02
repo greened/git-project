@@ -35,3 +35,6 @@ def test_iter_command_failure_reports_status_and_stderr():
     with pytest.raises(Exception, match='exited with code 3') as info:
         list(git_project.iter_command('sh -c "echo oops >&2; exit 3"'))
     assert 'oops' in str(info.value)
+
+def test_capture_command_takes_a_list():
+    assert git_project.capture_command(['printf', '%s', 'a b']) == b'a b'

@@ -70,7 +70,8 @@ def capture_command(command,
     that holds the output and the standard error when it exits with a non-zero
     status. With dry_run, print the command and return None.
 
-    command: The command to run. It is split with shlex.split, with no shell.
+    command: The command to run, as a list of arguments or as a string that is
+    split with shlex.split. No shell runs it.
 
     clargs: An argparse-style command-line namespace. When given, its dry_run
     attribute can turn on a dry run, show_commands prints the command before
@@ -83,6 +84,10 @@ def capture_command(command,
     show_error: Whether to show any standard error output.
 
     """
+    cmd_args = command
+    if not isinstance(command, str):
+        command = shlex.join(command)
+
     show_commands = False
     if clargs:
         if not dry_run:
@@ -97,7 +102,8 @@ def capture_command(command,
         if show_commands:
             print(command)
 
-        cmd_args = shlex.split(command)
+        if isinstance(cmd_args, str):
+            cmd_args = shlex.split(cmd_args)
 
         proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
