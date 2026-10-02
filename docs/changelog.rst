@@ -36,6 +36,11 @@ Added
 
 Fixed
 .....
+- ``substitute_value``, ``substitute_command`` and ``run`` shared one
+  default ``formats`` dict across calls, and ``substitute_value`` added its
+  names to it. So within one process, an object could resolve a name it does
+  not define to another object's value. Each call now works on its own copy,
+  and a ``formats`` dict passed in is no longer changed.
 - Removing one value of a config key failed when the value held a space.
   It was split into several arguments to ``git config --unset``. The pattern
   now reaches git as given, so a pattern escaped twice to get through that

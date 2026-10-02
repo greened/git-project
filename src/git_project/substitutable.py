@@ -39,9 +39,6 @@ The names come from four places, and a later one wins over an earlier one:
 A name that none of them define is looked up as a scope name through
 ``get_scope``, and gives that scope's ident.
 
-``substitute_value`` adds its names to ``formats``, so pass a new dict each
-time.
-
 The string is evaluated as a Python f-string with these names as its
 globals, again and again until it stops changing. So substitution runs any
 Python expression in braces. Treat config values as code.
@@ -78,7 +75,7 @@ class SubstitutableConfigObject(ConfigObject):
         """
         super().__init__(git, section, subsection, ident, **kwargs)
 
-    def substitute_value(self, git, project, string, formats=dict()):
+    def substitute_value(self, git, project, string, formats=None):
         """Given a project, perform variable substitution on a string and return the
         result as a string.
 
@@ -89,9 +86,10 @@ class SubstitutableConfigObject(ConfigObject):
         string: The string on which to perform substitution.
 
         formats: Extra names for substitution, with the lowest precedence.
-        substitute_value adds to it, so pass a new dict.
 
         """
+        formats = dict(formats or {})
+
         found_path = False
 
         # Substitute for project-global values.

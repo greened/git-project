@@ -587,3 +587,28 @@ def test_substitutable_substitute_no_branch(reset_directory, git):
                                              substitutable.command)
 
     assert command == f'cd {git.get_working_copy_root()}/path/to/build && make {project.target}'
+
+def test_substitutable_substitute_formats_not_shared(reset_directory, git):
+    class MyProject(git_project.ScopedConfigObject):
+        def __init__(self):
+            super().__init__(git,
+                             'project',
+                             None,
+                             'myproject')
+
+    project = MyProject()
+
+    first = git_project.SubstitutableConfigObject(git, 'project', 'mysub',
+                                                  'first', leaked='first')
+    second = git_project.SubstitutableConfigObject(git, 'project', 'mysub',
+                                                   'second')
+
+    formats = {}
+    assert first.substitute_value(git, project, '{leaked}', formats) == 'first'
+    assert formats == {}
+
+    assert first.substitute_value(git, project, '{leaked}') == 'first'
+
+    # The second object has no leaked item, so it cannot see the first's.
+    with pytest.raises(NameError):
+        second.substitute_value(git, project, '{leaked}')

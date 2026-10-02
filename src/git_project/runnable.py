@@ -58,7 +58,7 @@ class RunnableConfigObject(SubstitutableConfigObject):
         """
         super().__init__(git, section, subsection, ident, **kwargs)
 
-    def substitute_command(self, git, project, formats=dict()):
+    def substitute_command(self, git, project, formats=None):
         """Given a project, perform variable substitution on the command and return the
         result as a string.
 
@@ -69,7 +69,7 @@ class RunnableConfigObject(SubstitutableConfigObject):
         """
         return self.substitute_value(git, project, self.command, formats)
 
-    def run(self, git, project, formats=dict()):
+    def run(self, git, project, formats=None):
         """Do variable substitution, print the command and run it through the shell.
         Return the shell's exit status.
 
