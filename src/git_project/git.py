@@ -542,7 +542,8 @@ class Git(object):
         with open(commondir_filename, 'r') as commondir_file:
             commondir = commondir_file.read().strip()
 
-        return commondir
+        # Plain git writes a path relative to the worktree's gitdir.
+        return str((worktree_gitdir / commondir).resolve())
 
     def get_current_worktree(self):
         """Return the name of the current worktree or None if we are not in a

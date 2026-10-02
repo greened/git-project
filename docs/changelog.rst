@@ -30,6 +30,11 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Fixed
+.....
+- ``Git.get_git_common_dir`` returns an absolute path in a worktree that plain
+  ``git worktree add`` made. It returned the relative path that git writes, so
+  ``{git_common_dir}`` substituted ``../..`` there.
 
 `0.0.39`_ - 2026-09-30
 ----------------------

@@ -24,6 +24,7 @@ from pathlib import Path
 import pygit2
 import pytest
 import shutil
+import subprocess
 
 def test_git_init(reset_directory,
                   remote_repository,
@@ -891,6 +892,17 @@ def test_git_get_git_common_dir_worktree(reset_directory, git):
     git = git_project.Git()
 
     assert Path(git.get_git_common_dir()).name == '.git'
+
+def test_git_get_git_common_dir_plain_git_worktree(reset_directory, git):
+    common_dir = Path(git.get_gitdir()).resolve()
+    git.create_branch('test', 'master')
+    subprocess.run(['git', 'worktree', 'add', '../test', 'test'], check=True)
+
+    os.chdir('../test')
+
+    git = git_project.Git()
+
+    assert Path(git.get_git_common_dir()) == common_dir
 
 def test_git_worktree_subdir(reset_directory, local_repository):
     os.chdir(local_repository.path)
