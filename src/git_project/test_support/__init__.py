@@ -21,6 +21,24 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+"""Fixtures for testing git-project and its plugins.
+
+Run git-project's tests with one of these::
+
+  hatch run test
+  hatch run cov
+  hatch run all:test
+
+``cov`` adds a coverage report. ``all`` runs the suite under each Python
+version in its matrix.
+
+Set ``GIT_CONFIG_GLOBAL=/dev/null`` and ``GIT_CONFIG_NOSYSTEM=1`` when you
+run the tests. The tests make throwaway repositories and commits, and a
+hook or setting in your own git config would otherwise act on them.
+
+A test for a bug fix should fail before the fix. Check that it does.
+"""
+
 from .common import check_config_file
 from .common import ParserManagerMock
 from .common import PluginMock

@@ -34,6 +34,12 @@ Added
 .....
 - ``capture_command`` takes a list of arguments as well as a string.
 
+Changed
+.......
+- The ``git_project._contributing`` module is gone. The guide to working
+  on git-project is in the docs only, and its Tests section is now the
+  ``git_project.test_support`` package documentation.
+
 Fixed
 .....
 - ``substitute_value``, ``substitute_command`` and ``run`` shared one

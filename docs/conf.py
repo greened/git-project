@@ -39,6 +39,9 @@ release = importlib.metadata.version('git-project')
 
 extensions = ['sphinx.ext.extlinks', 'sphinx.ext.autodoc']
 autodoc_member_order = 'bysource'
+# git_project.test_support imports the test libraries, which the docs env
+# does not install.
+autodoc_mock_imports = ['pytest', 'pytest_console_scripts']
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
