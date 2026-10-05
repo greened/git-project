@@ -33,6 +33,8 @@ ChangeLog
 Added
 .....
 - ``capture_command`` takes a list of arguments as well as a string.
+- The package ships a ``py.typed`` marker, so mypy checks code that
+  uses git-project against its annotations.
 
 Changed
 .......
