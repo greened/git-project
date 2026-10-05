@@ -21,25 +21,35 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-import git_project
 import pytest
+
+import git_project
+
 
 def test_run_command_with_shell_returns_zero_on_success():
     assert git_project.run_command_with_shell("true") == 0
 
+
 def test_run_command_with_shell_returns_nonzero_on_failure():
     assert git_project.run_command_with_shell("false") != 0
+
 
 def test_run_command_with_shell_dry_run_returns_zero():
     assert git_project.run_command_with_shell("false", dry_run=True) == 0
 
+
 def test_iter_command_yields_lines():
-    assert list(git_project.iter_command('printf "a\\nb\\n"')) == ['a\n', 'b\n']
+    assert list(git_project.iter_command('printf "a\\nb\\n"')) == [
+        "a\n",
+        "b\n",
+    ]
+
 
 def test_iter_command_failure_reports_status_and_stderr():
-    with pytest.raises(Exception, match='exited with code 3') as info:
+    with pytest.raises(Exception, match="exited with code 3") as info:
         list(git_project.iter_command('sh -c "echo oops >&2; exit 3"'))
-    assert 'oops' in str(info.value)
+    assert "oops" in str(info.value)
+
 
 def test_capture_command_takes_a_list():
-    assert git_project.capture_command(['printf', '%s', 'a b']) == b'a b'
+    assert git_project.capture_command(["printf", "%s", "a b"]) == b"a b"

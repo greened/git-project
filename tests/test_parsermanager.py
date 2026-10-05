@@ -21,15 +21,19 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-def test_get_or_add_parser_name_and_key(reset_directory, parser_manager):
-    command = parser_manager.find_subparser('command')
 
-    parser = parser_manager.get_or_add_parser(command, 'visible', 'thekey')
+def test_get_or_add_parser_name_and_key(reset_directory, parser_manager):
+    command = parser_manager.find_subparser("command")
+
+    parser = parser_manager.get_or_add_parser(command, "visible", "thekey")
 
     # The key finds it, and a second call returns the same parser.
-    assert parser_manager.find_parser('thekey') is parser
-    assert parser_manager.get_or_add_parser(command, 'visible', 'thekey') is parser
+    assert parser_manager.find_parser("thekey") is parser
+    assert (
+        parser_manager.get_or_add_parser(command, "visible", "thekey")
+        is parser
+    )
 
     # The name is what the user types.
-    clargs = parser_manager.parse_args(['visible'])
-    assert clargs.command == 'visible'
+    clargs = parser_manager.parse_args(["visible"])
+    assert clargs.command == "visible"

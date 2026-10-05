@@ -52,6 +52,7 @@ import inspect
 
 from .configobj import ConfigObject
 
+
 class ScopedConfigObject(ConfigObject):
     """A object backed by git-config with scoping semantics.
 
@@ -67,20 +68,22 @@ class ScopedConfigObject(ConfigObject):
 
     @staticmethod
     def _is_unscoped(name):
-        unscoped_items = {'unscoped',
-                          'get_scope',
-                          'pop_scope',
-                          'get_ident',
-                          'get_section',
-                          'get_subsection',
-                          'rm_item',
-                          'rm_items',
-                          'add_item',
-                          'iter_multival',
-                          'rm',
-                          'has_item',
-                          'iteritems'}
-        if name.startswith('_'):
+        unscoped_items = {
+            "unscoped",
+            "get_scope",
+            "pop_scope",
+            "get_ident",
+            "get_section",
+            "get_subsection",
+            "rm_item",
+            "rm_items",
+            "add_item",
+            "iter_multival",
+            "rm",
+            "has_item",
+            "iteritems",
+        }
+        if name.startswith("_"):
             return True
         return name in unscoped_items
 
@@ -109,7 +112,7 @@ class ScopedConfigObject(ConfigObject):
 
         result = self._lookup_attribute(name)
 
-        return result if result else self.unscoped(f'{name}')
+        return result if result else self.unscoped(f"{name}")
 
     @classmethod
     def get(cls, git, project_section, subsection, ident, **kwargs):
@@ -129,11 +132,7 @@ class ScopedConfigObject(ConfigObject):
           construction.
 
         """
-        return super().get(git,
-                           project_section,
-                           subsection,
-                           ident,
-                           **kwargs)
+        return super().get(git, project_section, subsection, ident, **kwargs)
 
     def _lookup_attribute(self, name):
         """Walk up the child pointers to find the topmost scope that has a given config
@@ -143,7 +142,7 @@ class ScopedConfigObject(ConfigObject):
 
         """
         try:
-            result = self.unscoped('_child')._lookup_attribute(name)
+            result = self.unscoped("_child")._lookup_attribute(name)
             if result:
                 return result
         except AttributeError:
@@ -161,10 +160,10 @@ class ScopedConfigObject(ConfigObject):
         """
         # Find the topmost child.
         top_scope = self
-        while hasattr(top_scope, '_child'):
-            top_scope = top_scope.unscoped('_child')
+        while hasattr(top_scope, "_child"):
+            top_scope = top_scope.unscoped("_child")
 
-        assert not hasattr(top_scope, '_child')
+        assert not hasattr(top_scope, "_child")
         top_scope._child = obj
 
     def pop_scope(self):
@@ -173,11 +172,11 @@ class ScopedConfigObject(ConfigObject):
         # backreference to its parent and we need to remove the child from the
         # parent.  So rely on stack unwinding to get to the parent.
         try:
-            child = self.unscoped('_child')
+            child = self.unscoped("_child")
             result = child.pop_scope()
             if not result:
                 # Child did not have a child, child is the highest scope.
-                result = self.unscoped('_child')
+                result = self.unscoped("_child")
                 del self._child
             return result
         except AttributeError:
@@ -195,7 +194,7 @@ class ScopedConfigObject(ConfigObject):
     def _iteritems_impl(self, properties):
         """Iterate over all key, value items in this and all child scopes."""
         try:
-            child = self.unscoped('_child')
+            child = self.unscoped("_child")
             properties = child._iteritems_impl(properties)
         except AttributeError:
             # No child scope
@@ -222,7 +221,7 @@ class ScopedConfigObject(ConfigObject):
         # See if the child is what we're looking for.  This effectively starts
         # the search at the topmost scope.
         try:
-            child = self.unscoped('_child')
+            child = self.unscoped("_child")
         except AttributeError:
             # No child scope
             child = None

@@ -45,28 +45,33 @@ import argparse
 import getpass
 import io
 import os
-from pathlib import Path
-import pygit2
 import re
 import shlex
 import subprocess
 import sys
 import urllib.parse
-
 from importlib import metadata
+from pathlib import Path
+
+import pygit2
 
 from .parsermanager import ParserManager
+
 
 def get_version_string(package):
     version = metadata.version(package)
 
-    return f'{package} version {version}'
+    return f"{package} version {version}"
+
 
 def add_version_argument(parser, package):
-    parser.add_argument('--version',
-                        action='version',
-                        version=get_version_string(package),
-                        help='Print version')
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=get_version_string(package),
+        help="Print version",
+    )
+
 
 def parse_arguments(git, gitproject, project, plugin_manager, args):
     """Register plugin command-line arguments, then parse the command line and return
@@ -84,46 +89,39 @@ def parse_arguments(git, gitproject, project, plugin_manager, args):
     """
     parser_manager = ParserManager(gitproject, project)
 
-    parser = parser_manager.find_parser('__main__')
+    parser = parser_manager.find_parser("__main__")
     parser.parser.description = __doc__
 
     # --version
-    add_version_argument(parser, 'git-project')
+    add_version_argument(parser, "git-project")
 
-    command_subparser = parser_manager.add_subparser(parser,
-                                                     'command',
-                                                     dest='command',
-                                                     help='commands')
+    command_subparser = parser_manager.add_subparser(
+        parser, "command", dest="command", help="commands"
+    )
     command_subparser.required = True
 
     for plugin in plugin_manager.iterplugins():
-        plugin.add_arguments(git,
-                             gitproject,
-                             project,
-                             parser_manager,
-                             plugin_manager)
+        plugin.add_arguments(
+            git, gitproject, project, parser_manager, plugin_manager
+        )
 
     # Once all plugins have added arguments, give them a chance to modify
     # arguments other plugsin may have added.
     for plugin in plugin_manager.iterplugins():
-        plugin.modify_arguments(git,
-                                gitproject,
-                                project,
-                                parser_manager,
-                                plugin_manager)
+        plugin.modify_arguments(
+            git, gitproject, project, parser_manager, plugin_manager
+        )
 
     clargs = parser_manager.parse_args(args)
 
-    if not hasattr(clargs, 'func'):
+    if not hasattr(clargs, "func"):
         parser_manager.error()
         sys.exit(1)
 
     return clargs
 
-def add_top_level_command(parser_manager,
-                          name,
-                          key,
-                          **kwargs):
+
+def add_top_level_command(parser_manager, name, key, **kwargs):
     """Create a top-level command.  Throw an exception if the command already
     exists.
 
@@ -137,19 +135,14 @@ def add_top_level_command(parser_manager,
 
     """
 
-    command_subparser = parser_manager.find_subparser('command')
+    command_subparser = parser_manager.find_subparser("command")
     assert command_subparser
-    parser = parser_manager.add_parser(command_subparser,
-                                       name,
-                                       key,
-                                       **kwargs)
+    parser = parser_manager.add_parser(command_subparser, name, key, **kwargs)
 
     return parser
 
-def get_or_add_top_level_command(parser_manager,
-                                 name,
-                                 key,
-                                 **kwargs):
+
+def get_or_add_top_level_command(parser_manager, name, key, **kwargs):
     """Retrieve a top-level command parser or create one if none exists.
 
     parser_manager - The active ParserManager.
@@ -164,8 +157,5 @@ def get_or_add_top_level_command(parser_manager,
 
     parser = parser_manager.find_parser(key)
     if not parser:
-        parser = add_top_level_command(parser_manager,
-                                       name,
-                                       key,
-                                       **kwargs)
+        parser = add_top_level_command(parser_manager, name, key, **kwargs)
     return parser

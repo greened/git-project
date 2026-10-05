@@ -38,6 +38,7 @@ import shlex
 import subprocess
 import tempfile
 
+
 def run_command_with_shell(command, dry_run=False, show_command=False):
     """Run a command through the shell and return its exit status.
 
@@ -62,11 +63,10 @@ def run_command_with_shell(command, dry_run=False, show_command=False):
 
     return 0
 
-def capture_command(command,
-                    clargs=None,
-                    dry_run=False,
-                    show_output=False,
-                    show_error=True):
+
+def capture_command(
+    command, clargs=None, dry_run=False, show_output=False, show_error=True
+):
     """Run a command and return its standard output as bytes. Raise an Exception
     that holds the output and the standard error when it exits with a non-zero
     status. With dry_run, print the command and return None.
@@ -106,8 +106,9 @@ def capture_command(command,
         if isinstance(cmd_args, str):
             cmd_args = shlex.split(cmd_args)
 
-        proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
         # Wait for it to finish.
         out, err = proc.communicate()
@@ -116,13 +117,16 @@ def capture_command(command,
 
         if rc != 0:
             if show_error:
-                print(err, end='', flush=True)
-            raise Exception('{}: Process exited with code {}\nSTDOUT: {}\nSTDERR: {}'.format(command, rc, out, err))
+                print(err, end="", flush=True)
+            raise Exception(
+                f"{command}: Process exited with code {rc}\nSTDOUT: {out}\nSTDERR: {err}"
+            )
 
         if show_output:
-            print(out.decode(), end='', flush=True)
+            print(out.decode(), end="", flush=True)
 
         return out
+
 
 def iter_command(command, clargs=None):
     """A generator that runs a command and yields its output line by line, as text.
@@ -147,8 +151,9 @@ def iter_command(command, clargs=None):
     # Stderr goes to a file rather than a pipe. A pipe nobody reads until the
     # end fills up, and the command then blocks before it closes stdout.
     with tempfile.TemporaryFile() as errfile:
-        proc = subprocess.Popen(cmd_args, stdout=subprocess.PIPE,
-                                stderr=errfile)
+        proc = subprocess.Popen(
+            cmd_args, stdout=subprocess.PIPE, stderr=errfile
+        )
         for line in io.TextIOWrapper(proc.stdout):
             yield line
 
@@ -157,5 +162,7 @@ def iter_command(command, clargs=None):
 
         if rc != 0:
             errfile.seek(0)
-            err = errfile.read().decode(errors='replace')
-            raise Exception('{}: Process exited with code {}\nSTDERR: {}'.format(command, rc, err))
+            err = errfile.read().decode(errors="replace")
+            raise Exception(
+                f"{command}: Process exited with code {rc}\nSTDERR: {err}"
+            )

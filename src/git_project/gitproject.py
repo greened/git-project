@@ -23,6 +23,7 @@
 
 from .configobj import ConfigObject
 
+
 class GitProject(ConfigObject):
     """Manage the git-project config that is not tied to a project.
 
@@ -44,7 +45,7 @@ class GitProject(ConfigObject):
         ident: Always None.
 
         """
-        assert section == 'gitproject'
+        assert section == "gitproject"
         assert subsection == None
         assert ident == None
         super().__init__(git, section, subsection, ident)
@@ -58,12 +59,9 @@ class GitProject(ConfigObject):
         git: An object to query the repository and make config changes.
 
         """
-        return super().get(git,
-                           'gitproject',
-                           None,
-                           None)
+        return super().get(git, "gitproject", None, None)
 
     def iternames(self):
         """Iterate over the configured project names."""
-        for name in self.iter_multival('name'):
+        for name in self.iter_multival("name"):
             yield name

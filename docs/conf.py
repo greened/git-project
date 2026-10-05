@@ -27,36 +27,39 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'git-project'
-copyright = '2024, David A. Greene'
-author = 'David A. Greene'
+project = "git-project"
+copyright = "2024, David A. Greene"
+author = "David A. Greene"
 import importlib.metadata
 
-release = importlib.metadata.version('git-project')
+release = importlib.metadata.version("git-project")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.extlinks', 'sphinx.ext.autodoc']
-autodoc_member_order = 'bysource'
+extensions = ["sphinx.ext.extlinks", "sphinx.ext.autodoc"]
+autodoc_member_order = "bysource"
 # git_project.test_support imports the test libraries, which the docs env
 # does not install.
-autodoc_mock_imports = ['pytest', 'pytest_console_scripts']
+autodoc_mock_imports = ["pytest", "pytest_console_scripts"]
 
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = "alabaster"
 
 
 # -- Options for extlinks -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/extlinks.html
 
-extlinks = {'issue': ('https://github.com/greened/git-project/issues/%s',
-                      '#%s'),
-            'projecturl': ('https://github.com/greened/%s', None),
-            'contributors': ('https://github.com/greened/%s/graphs/contributors', 'overview for %s')}
+extlinks = {
+    "issue": ("https://github.com/greened/git-project/issues/%s", "#%s"),
+    "projecturl": ("https://github.com/greened/%s", None),
+    "contributors": (
+        "https://github.com/greened/%s/graphs/contributors",
+        "overview for %s",
+    ),
+}

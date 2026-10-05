@@ -160,6 +160,7 @@ the result.
 
 from abc import ABC, abstractmethod
 
+
 class Plugin(ABC):
     """The base class for all plugins. Plugins should inherit from this and
     implement add_arguments to register any command-line commands and options
@@ -167,6 +168,7 @@ class Plugin(ABC):
     they run in.
 
     """
+
     def __init__(self, name):
         self.name = name
         pass
@@ -191,12 +193,9 @@ class Plugin(ABC):
         pass
 
     @abstractmethod
-    def add_arguments(self,
-                      git,
-                      gitproject,
-                      project,
-                      parser_manager,
-                      plugin_manager):
+    def add_arguments(
+        self, git, gitproject, project, parser_manager, plugin_manager
+    ):
         """Add arguments and subparsers for plugins.
 
         git: A Git object to examine the repository.
@@ -217,12 +216,9 @@ class Plugin(ABC):
 
         """
 
-    def modify_arguments(self,
-                         git,
-                         gitproject,
-                         project,
-                         parser_manager,
-                         plugin_manager):
+    def modify_arguments(
+        self, git, gitproject, project, parser_manager, plugin_manager
+    ):
         """Alter any existing arguments.  With this method a plugin could, for example,
         update a command function to do a bit of work before and/or after the
         original command is run, or even replace existing command logic

@@ -169,8 +169,11 @@ License
 
 """
 
-from .commandline import parse_arguments, add_top_level_command
-from .commandline import get_or_add_top_level_command
+from .commandline import (
+    add_top_level_command,
+    get_or_add_top_level_command,
+    parse_arguments,
+)
 from .configobj import ConfigObject
 from .exception import GitProjectException
 from .git import Git
@@ -182,5 +185,5 @@ from .pluginmanager import PluginManager
 from .project import Project
 from .runnable import RunnableConfigObject
 from .scopedobj import ScopedConfigObject
+from .shell import capture_command, iter_command, run_command_with_shell
 from .substitutable import SubstitutableConfigObject
-from .shell import run_command_with_shell, iter_command, capture_command

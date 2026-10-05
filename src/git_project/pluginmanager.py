@@ -23,12 +23,14 @@
 
 from importlib.metadata import entry_points
 
-class PluginManager(object):
+
+class PluginManager:
     """A Borg class responsible for discovering plugins and providing handles to
     them. Every instance shares one state, but each construction empties the
     plugin list, so build it once per run, as main_impl does.
 
     """
+
     _shared_state = {}
 
     def __init__(self):
@@ -41,7 +43,7 @@ class PluginManager(object):
         arguments. Then call every plugin's add_class_hooks.
 
         """
-        plugins = entry_points(group='git-project.plugins')
+        plugins = entry_points(group="git-project.plugins")
         for entrypoint in plugins:
             plugin_class = entrypoint.load()
             plugin = plugin_class()

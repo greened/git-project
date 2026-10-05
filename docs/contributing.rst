@@ -73,9 +73,9 @@ Tests
 Lint
 ----
 
-The ``lint`` environment has ``style``, ``typing`` and ``fmt`` scripts, for
-ruff, black and mypy. Whether the tree passes them is not recorded here, so
-run them before you assume it does.
+``hatch run lint:all`` runs ruff, ``black --check`` and mypy.
+``hatch run lint:fmt`` runs black, then ``ruff check --fix``. The lint
+environment pins each tool to an exact version.
 
 Documentation
 -------------

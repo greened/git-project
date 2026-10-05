@@ -21,366 +21,403 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import os
+import shutil
+from pathlib import Path
+
+import pytest
+
 import git_project
 from git_project.test_support import check_config_file
 
-import os
-from pathlib import Path
-import pytest
-import shutil
 
 class MySubstitutable(git_project.SubstitutableConfigObject):
-    def __init__(self,
-                 git,
-                 project_section,
-                 subsection,
-                 ident,
-                 **kwargs):
-        super().__init__(git,
-                         project_section,
-                         subsection,
-                         ident,
-                         **kwargs)
+    def __init__(self, git, project_section, subsection, ident, **kwargs):
+        super().__init__(git, project_section, subsection, ident, **kwargs)
 
     @classmethod
     def get(cls, git, project_section, ident):
-        return super().get(git,
-                           project_section,
-                           'mysubstitutable',
-                           ident,
-                           command='cd {builddir}/{branch} && make {target}',
-                           description='Test command')
+        return super().get(
+            git,
+            project_section,
+            "mysubstitutable",
+            ident,
+            command="cd {builddir}/{branch} && make {target}",
+            description="Test command",
+        )
+
 
 class MyNoBranchSubstitutable(git_project.SubstitutableConfigObject):
-    def __init__(self,
-                 git,
-                 project_section,
-                 subsection,
-                 ident,
-                 **kwargs):
-        super().__init__(git,
-                         project_section,
-                         subsection,
-                         ident,
-                         **kwargs)
+    def __init__(self, git, project_section, subsection, ident, **kwargs):
+        super().__init__(git, project_section, subsection, ident, **kwargs)
 
     @classmethod
     def get(cls, git, project_section, ident):
-        return super().get(git,
-                           project_section,
-                           'mysubstitutable',
-                           ident,
-                           command='cd {builddir} && make {target}',
-                           description='Test command')
+        return super().get(
+            git,
+            project_section,
+            "mysubstitutable",
+            ident,
+            command="cd {builddir} && make {target}",
+            description="Test command",
+        )
+
 
 def test_substitutable_get(reset_directory, git):
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
-    assert substitutable.command == 'cd {builddir}/{branch} && make {target}'
+    assert substitutable.command == "cd {builddir}/{branch} && make {target}"
+
 
 def test_substitutable_substitute_command(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd {project.builddir}/{git.get_current_branch()} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_command_recursive(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build/{target}',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build/{target}",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_command_no_dup(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build/{target}',
-                             target='install')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build/{target}",
+                target="install",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    project.build = 'devrel'
-    project.add_item('build', 'check-devrel')
+    project.build = "devrel"
+    project.add_item("build", "check-devrel")
 
-    check_config_file('project.myproject',
-                      'builddir',
-                      {'/path/to/build/{target}'})
+    check_config_file(
+        "project.myproject", "builddir", {"/path/to/build/{target}"}
+    )
 
-    check_config_file('project.myproject',
-                      'target',
-                      {'install'})
+    check_config_file("project.myproject", "target", {"install"})
 
-    check_config_file('project.myproject',
-                      'build',
-                      {'devrel', 'check-devrel'})
+    check_config_file("project.myproject", "build", {"devrel", "check-devrel"})
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd /path/to/build/{project.target}/{git.get_current_branch()} && make {project.target}"
+    )
 
-    check_config_file('project.myproject',
-                      'builddir',
-                      {'/path/to/build/{target}'})
+    check_config_file(
+        "project.myproject", "builddir", {"/path/to/build/{target}"}
+    )
 
-    check_config_file('project.myproject',
-                      'target',
-                      {'install'})
+    check_config_file("project.myproject", "target", {"install"})
 
-    check_config_file('project.myproject',
-                      'build',
-                      {'devrel', 'check-devrel'})
+    check_config_file("project.myproject", "build", {"devrel", "check-devrel"})
+
 
 def test_substitutable_substitute_command_subsection(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='{mysubstitutable}')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="{mysubstitutable}",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    project.mysubstitutable = 'test'
+    project.mysubstitutable = "test"
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.mysubstitutable}'
+    assert (
+        command
+        == f"cd {project.builddir}/{git.get_current_branch()} && make {project.mysubstitutable}"
+    )
+
 
 def test_substitutable_substitute_project(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='{mysubstitutable} {project}')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="{mysubstitutable} {project}",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    project.mysubstitutable = 'test'
+    project.mysubstitutable = "test"
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}'
+    assert (
+        command
+        == f"cd {project.builddir}/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}"
+    )
+
 
 def test_substitutable_substitute_scope(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build/{worktree}',
-                             target='{mysubstitutable} {project}')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build/{worktree}",
+                target="{mysubstitutable} {project}",
+            )
 
     class MyWorktree(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             'worktree',
-                             'myworktree')
+            super().__init__(git, "project", "worktree", "myworktree")
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
     worktree = MyWorktree()
 
     project.push_scope(worktree)
 
-    project.mysubstitutable = 'test'
+    project.mysubstitutable = "test"
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}'
+    assert (
+        command
+        == f"cd /path/to/build/myworktree/{git.get_current_branch()} && make {project.mysubstitutable} {project.get_section()}"
+    )
+
 
 def test_substitutable_substitute_formats(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='debug {options}')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="debug {options}",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    formats = {
-        'options': 'opt'
-    }
+    formats = {"options": "opt"}
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command,
-                                             formats)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command, formats
+    )
 
-    assert command == f'cd {project.builddir}/{git.get_current_branch()} && make debug opt'
+    assert (
+        command
+        == f"cd {project.builddir}/{git.get_current_branch()} && make debug opt"
+    )
+
 
 def test_substitutable_substitute_gitdir(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{gitdir}/../../path/to/build',
-                             target='debug {options}')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{gitdir}/../../path/to/build",
+                target="debug {options}",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    formats = {
-        'options': 'opt'
-    }
+    formats = {"options": "opt"}
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command,
-                                             formats)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command, formats
+    )
 
-    assert command == f'cd {git.get_gitdir()}/../../path/to/build/{git.get_current_branch()} && make debug opt'
+    assert (
+        command
+        == f"cd {git.get_gitdir()}/../../path/to/build/{git.get_current_branch()} && make debug opt"
+    )
+
 
 def test_substitutable_substitute_git_common_dir(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{git_common_dir}/../../path/to/build',
-                             target='debug {options}')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{git_common_dir}/../../path/to/build",
+                target="debug {options}",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    formats = {
-        'options': 'opt'
-    }
+    formats = {"options": "opt"}
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command,
-                                             formats)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command, formats
+    )
 
-    assert command == f'cd {git.get_git_common_dir()}/../../path/to/build/{git.get_current_branch()} && make debug opt'
+    assert (
+        command
+        == f"cd {git.get_git_common_dir()}/../../path/to/build/{git.get_current_branch()} && make debug opt"
+    )
+
 
 def test_substitutable_substitute_substitutable_item(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject')
+            super().__init__(git, "project", None, "myproject")
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             'echo {description}')
+    command = substitutable.substitute_value(
+        git, project, "echo {description}"
+    )
 
-    assert command == f'echo {substitutable.description}'
+    assert command == f"echo {substitutable.description}"
+
 
 def test_substitutable_substitute_command_rebase(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    git.checkout('notpushed')
+    git.checkout("notpushed")
     current_branch = git.get_current_branch()
 
     os.chdir(git.get_working_copy_root())
-    output = git_project.run_command_with_shell('git rebase --exec false origin/master')
+    output = git_project.run_command_with_shell(
+        "git rebase --exec false origin/master"
+    )
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {project.builddir}/{current_branch} && make {project.target}'
+    assert (
+        command
+        == f"cd {project.builddir}/{current_branch} && make {project.target}"
+    )
 
-def test_substitutable_substitute_command_rebase_worktree(reset_directory, git):
+
+def test_substitutable_substitute_command_rebase_worktree(
+    reset_directory, git
+):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
     # Create a branch for the worktree.
-    commit, ref = git._repo.resolve_refish('HEAD')
-    branch = git._repo.branches.create('user/test-subst', commit)
+    commit, ref = git._repo.resolve_refish("HEAD")
+    branch = git._repo.branches.create("user/test-subst", commit)
 
-    worktree_checkout_path = Path.cwd() / '..' / '..' / 'user' / 'test-subst'
+    worktree_checkout_path = Path.cwd() / ".." / ".." / "user" / "test-subst"
 
-    git.add_worktree('test-subst', str(worktree_checkout_path), 'user/test-subst')
+    git.add_worktree(
+        "test-subst", str(worktree_checkout_path), "user/test-subst"
+    )
 
     os.chdir(worktree_checkout_path)
 
@@ -388,228 +425,285 @@ def test_substitutable_substitute_command_rebase_worktree(reset_directory, git):
 
     current_branch = wtgit.get_current_branch()
 
-    git_project.run_command_with_shell('git rebase --exec false origin/master')
+    git_project.run_command_with_shell("git rebase --exec false origin/master")
 
-    command = substitutable.substitute_value(wtgit,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        wtgit, project, substitutable.command
+    )
 
-    assert command == f'cd {project.builddir}/{current_branch} && make {project.target}'
+    assert (
+        command
+        == f"cd {project.builddir}/{current_branch} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_fstring(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
     # Create a branch.
-    commit, ref = git._repo.resolve_refish('HEAD')
-    branch = git._repo.branches.create('imerge/user/test-fstr', commit)
+    commit, ref = git._repo.resolve_refish("HEAD")
+    branch = git._repo.branches.create("imerge/user/test-fstr", commit)
 
-    git.checkout('imerge/user/test-fstr')
+    git.checkout("imerge/user/test-fstr")
     current_branch = git.get_current_branch()
 
-    git_project.run_command_with_shell('git rebase --exec false origin/master')
+    git_project.run_command_with_shell("git rebase --exec false origin/master")
 
-    substitutable.command='cd {builddir}/{branch.replace("imerge/", "", 1)} && make {target}'
+    substitutable.command = (
+        'cd {builddir}/{branch.replace("imerge/", "", 1)} && make {target}'
+    )
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {project.builddir}/{current_branch.replace("imerge/", "", 1)} && make {project.target}'
+    assert (
+        command
+        == f'cd {project.builddir}/{current_branch.replace("imerge/", "", 1)} && make {project.target}'
+    )
+
 
 def test_substitutable_substitute_recursive(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/{builddir}',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/{builddir}",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
     with pytest.raises(Exception) as e:
-        command = substitutable.substitute_value(git,
-                                                 project,
-                                                 substitutable.command)
+        command = substitutable.substitute_value(
+            git, project, substitutable.command
+        )
+
 
 def test_substitutable_substitute_project(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='/path/to/build/{project}',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="/path/to/build/{project}",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd /path/to/build/{project.get_section()}/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd /path/to/build/{project.get_section()}/{git.get_current_branch()} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_gitdir(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{gitdir}/../path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{gitdir}/../path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {git.get_gitdir()}/../path/to/build/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd {git.get_gitdir()}/../path/to/build/{git.get_current_branch()} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_git_common_dir(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{git_common_dir}/../path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{git_common_dir}/../path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {git.get_git_common_dir()}/../path/to/build/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd {git.get_git_common_dir()}/../path/to/build/{git.get_current_branch()} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_git_workdir(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{git_workdir}/path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{git_workdir}/path/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {git.get_working_copy_root()}/path/to/build/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd {git.get_working_copy_root()}/path/to/build/{git.get_current_branch()} && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_escaped_braces(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{git_workdir}/{{}path{}}/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{git_workdir}/{{}path{}}/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {git.get_working_copy_root()}/{{path}}/to/build/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd {git.get_working_copy_root()}/{{path}}/to/build/{git.get_current_branch()} && make {project.target}"
+    )
 
-def test_substitutable_substitute_preserve_escaped_braces(reset_directory, git):
+
+def test_substitutable_substitute_preserve_escaped_braces(
+    reset_directory, git
+):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{git_workdir}/{{}{{}{}}path{{}{}}{}}/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{git_workdir}/{{}{{}{}}path{{}{}}{}}/to/build",
+                target="debug",
+            )
 
-    substitutable = MySubstitutable.get(git, 'project', 'test')
+    substitutable = MySubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {git.get_working_copy_root()}/{{{{}}path{{}}}}/to/build/{git.get_current_branch()} && make {project.target}'
+    assert (
+        command
+        == f"cd {git.get_working_copy_root()}/{{{{}}path{{}}}}/to/build/{git.get_current_branch()} && make {project.target}"
+    )
 
 
 def test_substitutable_substitute_no_branch(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject',
-                             builddir='{git_workdir}/path/to/build',
-                             target='debug')
+            super().__init__(
+                git,
+                "project",
+                None,
+                "myproject",
+                builddir="{git_workdir}/path/to/build",
+                target="debug",
+            )
 
-    substitutable = MyNoBranchSubstitutable.get(git, 'project', 'test')
+    substitutable = MyNoBranchSubstitutable.get(git, "project", "test")
 
     project = MyProject()
 
     git.detach_head()
 
-    command = substitutable.substitute_value(git,
-                                             project,
-                                             substitutable.command)
+    command = substitutable.substitute_value(
+        git, project, substitutable.command
+    )
 
-    assert command == f'cd {git.get_working_copy_root()}/path/to/build && make {project.target}'
+    assert (
+        command
+        == f"cd {git.get_working_copy_root()}/path/to/build && make {project.target}"
+    )
+
 
 def test_substitutable_substitute_formats_not_shared(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
-            super().__init__(git,
-                             'project',
-                             None,
-                             'myproject')
+            super().__init__(git, "project", None, "myproject")
 
     project = MyProject()
 
-    first = git_project.SubstitutableConfigObject(git, 'project', 'mysub',
-                                                  'first', leaked='first')
-    second = git_project.SubstitutableConfigObject(git, 'project', 'mysub',
-                                                   'second')
+    first = git_project.SubstitutableConfigObject(
+        git, "project", "mysub", "first", leaked="first"
+    )
+    second = git_project.SubstitutableConfigObject(
+        git, "project", "mysub", "second"
+    )
 
     formats = {}
-    assert first.substitute_value(git, project, '{leaked}', formats) == 'first'
+    assert first.substitute_value(git, project, "{leaked}", formats) == "first"
     assert formats == {}
 
-    assert first.substitute_value(git, project, '{leaked}') == 'first'
+    assert first.substitute_value(git, project, "{leaked}") == "first"
 
     # The second object has no leaked item, so it cannot see the first's.
     with pytest.raises(NameError):
-        second.substitute_value(git, project, '{leaked}')
+        second.substitute_value(git, project, "{leaked}")

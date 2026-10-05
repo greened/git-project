@@ -39,17 +39,19 @@ hook or setting in your own git config would otherwise act on them.
 A test for a bug fix should fail before the fix. Check that it does.
 """
 
-from .common import check_config_file
-from .common import ParserManagerMock
-from .common import PluginMock
-from .common import orig_repository
-from .common import remote_repository
-from .common import local_repository
-from .common import reset_directory
-from .common import parser_manager
-from .common import plugin_manager
-from .common import git
-from .common import bare_git
-from .common import gitproject
-from .common import git_project_runner
-from .common import project
+from .common import (
+    ParserManagerMock,
+    PluginMock,
+    bare_git,
+    check_config_file,
+    git,
+    git_project_runner,
+    gitproject,
+    local_repository,
+    orig_repository,
+    parser_manager,
+    plugin_manager,
+    project,
+    remote_repository,
+    reset_directory,
+)

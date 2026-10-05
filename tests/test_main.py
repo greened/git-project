@@ -21,45 +21,44 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import os
+import shutil
+from pathlib import Path
+
+import pytest
+
 import git_project
 from git_project.test_support import check_config_file
 
-import os
-import pytest
-from pathlib import Path
-import shutil
 
 def test_main_no_dup(reset_directory, git, project):
     project._git.validate_config()
 
     project._git.validate_config()
-    git_project.main_impl(['config', 'branch'])
+    git_project.main_impl(["config", "branch"])
 
-    project.build = 'devrel'
-
-    project._git.validate_config()
-    git_project.main_impl(['config', 'branch'])
-
-    project.add_item('build', 'check-devrel')
+    project.build = "devrel"
 
     project._git.validate_config()
-    git_project.main_impl(['config', 'branch'])
+    git_project.main_impl(["config", "branch"])
 
-    check_config_file('project',
-                      'build',
-                      {'devrel', 'check-devrel'})
+    project.add_item("build", "check-devrel")
 
     project._git.validate_config()
-    git_project.main_impl(['config', 'branch'])
+    git_project.main_impl(["config", "branch"])
 
-    check_config_file('project',
-                      'build',
-                      {'devrel', 'check-devrel'})
+    check_config_file("project", "build", {"devrel", "check-devrel"})
+
+    project._git.validate_config()
+    git_project.main_impl(["config", "branch"])
+
+    check_config_file("project", "build", {"devrel", "check-devrel"})
+
 
 def test_main_help_shows_summary(reset_directory, git, capsys):
     with pytest.raises(SystemExit):
-        git_project.main_impl(['--help'])
+        git_project.main_impl(["--help"])
 
     out = capsys.readouterr().out
-    assert 'git <project> <command> [<options>]' in out
-    assert 'The name git-project runs under selects the active project.' in out
+    assert "git <project> <command> [<options>]" in out
+    assert "The name git-project runs under selects the active project." in out

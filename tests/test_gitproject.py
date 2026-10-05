@@ -22,10 +22,11 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import shutil
+from pathlib import Path
 
 import git_project
-from pathlib import Path
-import shutil
+
 
 def test_gitproject_get(reset_directory, local_repository):
     os.chdir(local_repository.path)
@@ -38,6 +39,7 @@ def test_gitproject_get(reset_directory, local_repository):
 
     assert projects == []
 
+
 def test_gitproject_iternames(reset_directory, local_repository):
     # Gets to GITDIR
     os.chdir(local_repository.path)
@@ -46,9 +48,9 @@ def test_gitproject_iternames(reset_directory, local_repository):
 
     gp = git_project.GitProject.get(git)
 
-    gp.add_item('name', 'new')
-    gp.add_item('name', 'test')
+    gp.add_item("name", "new")
+    gp.add_item("name", "test")
 
     projects = {name for name in gp.iternames()}
 
-    assert projects == {'test', 'new'}
+    assert projects == {"test", "new"}

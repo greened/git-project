@@ -26,6 +26,7 @@ from pathlib import Path
 from .git import Git
 from .scopedobj import ScopedConfigObject
 
+
 class Project(ScopedConfigObject):
     """A class representing a project section in the git config. Each invocation of
     git-project has an 'active project' determined by the name through which
@@ -76,11 +77,7 @@ class Project(ScopedConfigObject):
         kwargs: Keyword arguments of property values to set upon construction.
 
         """
-        project = super().get(git,
-                              section,
-                              None,
-                              None,
-                              **kwargs)
+        project = super().get(git, section, None, None, **kwargs)
         return project
 
     def set_defaults(self):
@@ -90,12 +87,12 @@ class Project(ScopedConfigObject):
 
         """
         if self._git.has_repo():
-            if not self.has_item('branch'):
+            if not self.has_item("branch"):
                 main = self._git.get_main_branch()
                 if main:
                     self.branch = self._git.refname_to_branch_name(main)
-            if not self.has_item('remote'):
-                self.remote = 'origin'
+            if not self.has_item("remote"):
+                self.remote = "origin"
 
     def add_remote(self, remote):
         """Add a remote for this project.  All branches for this project are checked
@@ -106,11 +103,11 @@ class Project(ScopedConfigObject):
         remote: The remote to add.
 
         """
-        self.add_item('remote', remote)
+        self.add_item("remote", remote)
 
     def iterremotes(self):
         """Iterate over the remotes for this project."""
-        for remote in self.iter_multival('remote'):
+        for remote in self.iter_multival("remote"):
             yield remote
 
     def add_branch(self, branch):
@@ -123,11 +120,11 @@ class Project(ScopedConfigObject):
         branch: The branch to add.
 
         """
-        self.add_item('branch', branch)
+        self.add_item("branch", branch)
 
     def iterbranches(self):
         """Iterate over the project's branches."""
-        for branch in self.iter_multival('branch'):
+        for branch in self.iter_multival("branch"):
             yield branch
 
     # Git interface customized to project.
@@ -140,11 +137,14 @@ class Project(ScopedConfigObject):
 
         """
         if self._git.has_repo():
-            for branch in self._git.iterrefnames(['refs/heads/{0}'.format(branch) for branch in self.iterbranches()] +
-                                                 ['refs/remotes/{0}/{1}'.
-                                                  format(remote, branch) for branch in
-                                                  self.iterbranches() for remote in
-                                                  self.iterremotes()]):
+            for branch in self._git.iterrefnames(
+                [f"refs/heads/{branch}" for branch in self.iterbranches()]
+                + [
+                    f"refs/remotes/{remote}/{branch}"
+                    for branch in self.iterbranches()
+                    for remote in self.iterremotes()
+                ]
+            ):
                 yield branch.strip()
 
     # Branch info.
@@ -161,16 +161,17 @@ class Project(ScopedConfigObject):
             if target in self._git.iterbranches():
                 target_refname = self._git.committish_to_refname(target)
             for remote in self.iterremotes():
-                target_remote_refname = (
-                    self._git.get_remote_push_refname(target_refname, remote)
+                target_remote_refname = self._git.get_remote_push_refname(
+                    target_refname, remote
                 )
                 if not target_remote_refname:
-                    target_remote_refname = (
-                        self._git.get_remote_fetch_refname(target_refname,
-                                                           remote)
+                    target_remote_refname = self._git.get_remote_fetch_refname(
+                        target_refname, remote
                     )
                     if not target_remote_refname:
-                        target_remote_refname = f'refs/remotes/{remote}/{target_refname}'
+                        target_remote_refname = (
+                            f"refs/remotes/{remote}/{target_refname}"
+                        )
                 if self._git.refname_is_merged(refname, target_remote_refname):
                     return True
         return False

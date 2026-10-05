@@ -51,18 +51,15 @@ that command.
 import collections
 import inspect
 
-class ConfigObject(object):
+
+class ConfigObject:
     """Base class for objects that use git-config as a backing store. Specified
     property values are saved to the git config file and read from the config
     file upon instantiation. See the module documentation for how sections,
     properties and multi-value keys work.
     """
-    def __init__(self,
-                 git,
-                 project_section,
-                 subsection,
-                 ident,
-                 **kwargs):
+
+    def __init__(self, git, project_section, subsection, ident, **kwargs):
         """ConfigObject construction.  This should be treated as a private method and
         all construction should occur through the get method.
 
@@ -84,33 +81,28 @@ class ConfigObject(object):
         self._project_section = project_section
         self._subsection = subsection
         self._ident = ident
-        self._section = ConfigObject._get_full_section(self._project_section,
-                                                       self._subsection,
-                                                       self._ident)
+        self._section = ConfigObject._get_full_section(
+            self._project_section, self._subsection, self._ident
+        )
         self._init_from_dict(kwargs)
 
     def __setattr__(self, name, value):
-        if name.startswith('_'):
+        if name.startswith("_"):
             super().__setattr__(name, value)
             return
 
         # The git config can only handle string values.
-        assert(isinstance(value, str))
+        assert isinstance(value, str)
         self._set_item(name, value)
 
     def __delattr__(self, name):
-        if name.startswith('_'):
+        if name.startswith("_"):
             super().__delattr__(name)
             return
         self.rm_items(name)
 
     @classmethod
-    def get(cls,
-            git,
-            project_section,
-            subsection,
-            ident,
-            **kwargs):
+    def get(cls, git, project_section, subsection, ident, **kwargs):
         """Factory to construct ConfigObjects.
 
         cls: The derived class being constructed.
@@ -131,12 +123,13 @@ class ConfigObject(object):
         gitsection = ConfigObject._get_full_section(
             ConfigObject._map_project_section(project_section),
             subsection,
-            ident)
+            ident,
+        )
         if git.has_repo():
             config_section = git.config.get_section(gitsection)
             if config_section:
                 for key, item in config_section:
-                    name = key.rsplit('.', 1)[-1]
+                    name = key.rsplit(".", 1)[-1]
                     if item.is_multival():
                         inits[name] = [value for value in item.itervalues()]
                     else:
@@ -145,20 +138,12 @@ class ConfigObject(object):
         for key, value in kwargs.items():
             inits[key] = value
 
-        result = cls(git,
-                     project_section,
-                     subsection,
-                     ident,
-                     **inits)
+        result = cls(git, project_section, subsection, ident, **inits)
 
         return result
 
     @classmethod
-    def exists(cls,
-               git,
-               project_section,
-               subsection,
-               ident):
+    def exists(cls, git, project_section, subsection, ident):
         """Return whether an existing git config exists for the ConfigObject.
 
         cls: The derived class being checked.
@@ -178,7 +163,8 @@ class ConfigObject(object):
         gitsection = ConfigObject._get_full_section(
             ConfigObject._map_project_section(project_section),
             subsection,
-            ident)
+            ident,
+        )
 
         section = git.config.get_section(gitsection)
         return True if section else False
@@ -194,13 +180,13 @@ class ConfigObject(object):
         # -. Since underscore is not allowed in a config key, translate them to -
         # as well.
 
-        tr_table = project_section.maketrans('._', '--')
+        tr_table = project_section.maketrans("._", "--")
         project_section = project_section.translate(tr_table)
 
         # Also with pygit2 the key can't start with - so prepend a legal string.
 
-        if project_section.startswith('-'):
-            project_section = 'ZZ' + project_section
+        if project_section.startswith("-"):
+            project_section = "ZZ" + project_section
 
         return project_section
 
@@ -212,9 +198,9 @@ class ConfigObject(object):
         """
         result = section
         if subsection:
-            result += '.' + subsection
+            result += "." + subsection
         if ident:
-            result += '.' + ident
+            result += "." + ident
         return result
 
     @classmethod
@@ -230,6 +216,7 @@ class ConfigObject(object):
     def _add_property(cls, name):
         """Add a property name that reads the git config when accessed and writes the
         git config when written."""
+
         def fun_get(self):
             result = {item for item in self.iter_multival(name)}
             if not result:
@@ -237,8 +224,10 @@ class ConfigObject(object):
             if len(result) == 1:
                 return result.pop()
             return frozenset(result)
+
         def fun_set(self, value):
             self._set_item(name, value)
+
         prop = property(fun_get, fun_set)
         setattr(cls, name, prop)
 
@@ -306,6 +295,7 @@ class ConfigObject(object):
         valuees that are sequences create multi-value keys.
 
         """
+
         def issequence(obj):
             if isinstance(obj, str):
                 return False
@@ -325,8 +315,13 @@ class ConfigObject(object):
 
     def __repr__(self):
         """Serialize the object as a string."""
-        return str({key:value for (key, value) in
-                    self.__dict__.items() if not key.startswith('_')})
+        return str(
+            {
+                key: value
+                for (key, value) in self.__dict__.items()
+                if not key.startswith("_")
+            }
+        )
 
     def __str__(self):
         """Serialize the object as a string."""
@@ -337,7 +332,7 @@ class ConfigObject(object):
         for key, value in self.iteritems():
             self.rm_items(key)
         # Removing all section entries removes the section.
-        #self._git.config.rm_section(self._section)
+        # self._git.config.rm_section(self._section)
 
     def iteritems(self):
         """Iterate over all key, value items."""

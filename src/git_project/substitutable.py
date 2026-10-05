@@ -51,6 +51,7 @@ from pathlib import Path
 from .configobj import ConfigObject
 from .shell import run_command_with_shell
 
+
 class SubstitutableConfigObject(ConfigObject):
     """Base class for objects that use git-config as a backing store and allow
     substitution of config values.  Inherits from ConfigObject.
@@ -58,6 +59,7 @@ class SubstitutableConfigObject(ConfigObject):
     Derived classes should implement the ConfigObject protocol.
 
     """
+
     def __init__(self, git, section, subsection, ident, **kwargs):
         """SubstitutableConfigObject construction. This should be treated as a
         private method and all construction should occur through the get
@@ -101,12 +103,12 @@ class SubstitutableConfigObject(ConfigObject):
 
         # Substitute for values in self.
         for key, value in self.iteritems():
-           formats[key] = value
+            formats[key] = value
 
-        formats['project'] = project.get_section()
-        formats['gitdir'] = str(git.get_gitdir())
-        formats['git_common_dir'] = str(git.get_git_common_dir())
-        formats['git_workdir'] = str(git.get_working_copy_root())
+        formats["project"] = project.get_section()
+        formats["gitdir"] = str(git.get_gitdir())
+        formats["git_common_dir"] = str(git.get_git_common_dir())
+        formats["git_workdir"] = str(git.get_working_copy_root())
 
         current_branch = git.get_current_branch()
         if not current_branch:
@@ -115,19 +117,21 @@ class SubstitutableConfigObject(ConfigObject):
             common_dir = git.get_git_common_dir()
 
             if worktree:
-                common_dir = f'{common_dir}/worktrees/{worktree}'
+                common_dir = f"{common_dir}/worktrees/{worktree}"
 
-            rebase_apply = f'{common_dir}/rebase-apply'
-            rebase_merge = f'{common_dir}/rebase-merge'
+            rebase_apply = f"{common_dir}/rebase-apply"
+            rebase_merge = f"{common_dir}/rebase-merge"
 
             for rebase_path in (rebase_apply, rebase_merge):
-                head_name = Path(f'{rebase_path}/head-name')
+                head_name = Path(f"{rebase_path}/head-name")
                 if head_name.exists():
-                    current_branch = git.refname_to_branch_name(head_name.read_text().strip())
+                    current_branch = git.refname_to_branch_name(
+                        head_name.read_text().strip()
+                    )
                     break
 
         if current_branch is not None:
-            formats['branch'] = current_branch
+            formats["branch"] = current_branch
 
         # Make sure substitutions don't reference themselves, to avoid an
         # infinite loop substituting.
@@ -137,9 +141,9 @@ class SubstitutableConfigObject(ConfigObject):
         # path: {dir}/foo
         # dir: {path}/bar
         for key, value in formats.items():
-            if f'{{{key}}}' in value:
+            if f"{{{key}}}" in value:
                 raise RuntimeError(
-                    f'Recursive substitution: {key} is in {value}'
+                    f"Recursive substitution: {key} is in {value}"
                 )
 
         def try_format(string, formats):
@@ -158,10 +162,12 @@ class SubstitutableConfigObject(ConfigObject):
 
         escaped_braces = False
         while True:
-            escaped_braces = escaped_braces or '{{}' in string or '{}}' in string
+            escaped_braces = (
+                escaped_braces or "{{}" in string or "{}}" in string
+            )
             if escaped_braces:
-                string = string.replace('{{}', '[[[')
-                string = string.replace('{}}', ']]]')
+                string = string.replace("{{}", "[[[")
+                string = string.replace("{}}", "]]]")
             try:
                 newstring = try_format(string, formats)
             except KeyError as exception:
@@ -174,7 +180,7 @@ class SubstitutableConfigObject(ConfigObject):
                 # args is simply the error  message, with the name surrounded by
                 # '.  Use .name attribute after upgrading to python 3.10.
                 for arg in exception.args:
-                    key = arg.split("\'")[1]
+                    key = arg.split("'")[1]
                     add_scope(project, key, formats)
                 # Try again after adding scopes.
                 newstring = try_format(string, formats)
@@ -183,8 +189,8 @@ class SubstitutableConfigObject(ConfigObject):
             string = newstring
             if not changed:
                 if escaped_braces:
-                    string = string.replace('[[[', '{')
-                    string = string.replace(']]]', '}')
+                    string = string.replace("[[[", "{")
+                    string = string.replace("]]]", "}")
                 break
 
         return string

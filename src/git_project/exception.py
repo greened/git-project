@@ -21,8 +21,9 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
 
 class GitProjectException(Exception):
     """An error to report to the user.
@@ -32,6 +33,7 @@ class GitProjectException(Exception):
     failure status. See git_project.main.
 
     """
+
     def __init__(self, message):
         super().__init__(message)
         self._message = message
@@ -39,4 +41,4 @@ class GitProjectException(Exception):
     @property
     def message(self):
         command = Path(sys.argv[0]).name
-        return f'{command}: {self._message}'
+        return f"{command}: {self._message}"

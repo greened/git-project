@@ -22,20 +22,22 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import os
-from pathlib import Path
-import progressbar
-import pygit2
 import re
 import shlex
 import subprocess
 import urllib
+from pathlib import Path
+
+import progressbar
+import pygit2
 
 from .exception import GitProjectException
 from .shell import capture_command
 
+
 # Git commands
 #
-class Git(object):
+class Git:
     """A facade over a lower-level interface to git providing interfaces needed to
     implement git-project functionality.
 
@@ -65,9 +67,9 @@ class Git(object):
         if ssh_id and allowed_types & pygit2.enums.CredentialType.SSH_KEY:
             return pygit2.Keypair(
                 username_from_url,
-                str(Path.home() / '.ssh' / f'{ssh_id}.pub'),
-                str(Path.home() / '.ssh' / ssh_id),
-                ''
+                str(Path.home() / ".ssh" / f"{ssh_id}.pub"),
+                str(Path.home() / ".ssh" / ssh_id),
+                "",
             )
         elif allowed_types & pygit2.enums.CredentialType.USERNAME:
             return pygit2.Username(username_from_url)
@@ -81,16 +83,19 @@ class Git(object):
             self.started_deltas = False
             self.deltas_done = False
 
-            self.null_oid = pygit2.Oid(hex='0000000000000000000000000000000000000000')
+            self.null_oid = pygit2.Oid(
+                hex="0000000000000000000000000000000000000000"
+            )
 
             self.ssh_id = ssh_id
 
         def credentials(self, url, username_from_url, allowed_types):
-            return Git._ssh_credentials(self.ssh_id, username_from_url,
-                                        allowed_types)
+            return Git._ssh_credentials(
+                self.ssh_id, username_from_url, allowed_types
+            )
 
         def sideband_progress(self, message):
-            print(f'Remote: {message}')
+            print(f"Remote: {message}")
 
         def transfer_progress(self, stats):
             if not self.started_transfer:
@@ -98,7 +103,7 @@ class Git(object):
                 self.progress = progressbar.ProgressBar(
                     maxval=stats.total_objects
                 )
-                print(f'Receiving objects ({stats.total_objects})...')
+                print(f"Receiving objects ({stats.total_objects})...")
                 self.progress.start()
 
             if not self.transfer_done:
@@ -109,7 +114,7 @@ class Git(object):
 
             if stats.total_deltas > 0 and not self.started_deltas:
                 self.started_deltas = True
-                print(f'Resolving deltas ({stats.total_deltas})...')
+                print(f"Resolving deltas ({stats.total_deltas})...")
                 self.progress = progressbar.ProgressBar(
                     maxval=stats.total_deltas
                 )
@@ -120,20 +125,23 @@ class Git(object):
                 if stats.indexed_deltas >= stats.total_deltas:
                     self.progress.finish()
                     self.deltas_done = True
-                    print('')
+                    print("")
 
         def update_tips(self, refname, old, new):
             if old != self.null_oid:
-                print(f'{refname} {str(old)} -> {str(new)}')
+                print(f"{refname} {old!s} -> {new!s}")
             else:
-                print(f'{refname} -> {str(new)}')
+                print(f"{refname} -> {new!s}")
 
-    class Config(object):
+    class Config:
         """Manage the git config for the current repository."""
-        class ConfigSection(object):
+
+        class ConfigSection:
             """Manage a specific section of the git config."""
-            class ConfigItem(object):
+
+            class ConfigItem:
                 """Represent a key:value (multi-)pair."""
+
                 def __init__(self, key):
                     self._key = key
                     self._values = set()
@@ -159,7 +167,9 @@ class Git(object):
                     """Get the single value of this key.  Raise an exception if there is more than
                     one value."""
                     if self.is_multival():
-                        raise GitProjectException('Single value get for multival')
+                        raise GitProjectException(
+                            "Single value get for multival"
+                        )
                     return next(iter(self._values))
 
                 def has_value(self, value):
@@ -168,7 +178,7 @@ class Git(object):
 
                 def add_value(self, value):
                     """Add a value to this key, potentially turning it into a multi-value key."""
-                    assert not value in self._values
+                    assert value not in self._values
                     self._values.add(value)
 
                 def clear(self):
@@ -180,11 +190,12 @@ class Git(object):
                     return len(self._values) > 1
 
                 def remove_value(self, pattern):
-                    """Remove the specified value from this key, leaving any other values in place.
-
-                    """
-                    self._values = {value for value in self._values
-                                    if not re.search(pattern, value)}
+                    """Remove the specified value from this key, leaving any other values in place."""
+                    self._values = {
+                        value
+                        for value in self._values
+                        if not re.search(pattern, value)
+                    }
 
             def __init__(self, git, name, content_dict):
                 self._git = git
@@ -206,7 +217,7 @@ class Git(object):
 
             def itemname(self, key):
                 """Return the full name of a key, including the section."""
-                return self.name + '.' + key
+                return self.name + "." + key
 
             def is_empty(self):
                 return len(self._items) == 0
@@ -224,13 +235,13 @@ class Git(object):
                 self._items[self.itemname(key)] = item
 
             def add_item(self, key, value):
-                """Add a value to the given key, potentially turning it into a multi-value key.
-
-                """
+                """Add a value to the given key, potentially turning it into a multi-value key."""
                 if self.has_value(key, value):
                     return
 
-                self._git._repo.config.set_multivar(self.itemname(key), re.escape(value), value)
+                self._git._repo.config.set_multivar(
+                    self.itemname(key), re.escape(value), value
+                )
                 item = self._items.get(self.itemname(key), None)
                 if not item:
                     item = self.ConfigItem(self.itemname(key))
@@ -239,7 +250,11 @@ class Git(object):
 
             def has_item(self, key):
                 """Return whether this key exists in this section."""
-                return True if self._items.get(self.itemname(key), None) else False
+                return (
+                    True
+                    if self._items.get(self.itemname(key), None)
+                    else False
+                )
 
             def has_value(self, key, value):
                 """Return whether this key with this values exists in this section."""
@@ -268,8 +283,9 @@ class Git(object):
                 # No pygit2 interface for this.
                 prev_dir = Path.cwd()
                 os.chdir(self._git._repo.path)
-                capture_command(['git', 'config', '--unset-all',
-                                 self.itemname(key)])
+                capture_command(
+                    ["git", "config", "--unset-all", self.itemname(key)]
+                )
                 os.chdir(prev_dir)
 
             def rm_item(self, key, pattern):
@@ -284,14 +300,17 @@ class Git(object):
                 # No pygit2 interface for this.
                 prev_dir = Path.cwd()
                 os.chdir(self._git._repo.path)
-                capture_command(['git', 'config', '--unset',
-                                 self.itemname(key), pattern])
+                capture_command(
+                    ["git", "config", "--unset", self.itemname(key), pattern]
+                )
                 os.chdir(prev_dir)
 
             # No pygit2 interface for this.
             def rm(self):
                 """Remove this entire section from the config."""
-                capture_command(['git', 'config', '--remove-section', self.name])
+                capture_command(
+                    ["git", "config", "--remove-section", self.name]
+                )
 
         def __init__(self, git, config):
             self._git = git
@@ -306,19 +325,19 @@ class Git(object):
                 # intialization after gathering all the entries.
                 sections = dict()
                 for entry in config:
-                    section, key = entry.name.rsplit('.', 1)
-                    if not section in sections:
+                    section, key = entry.name.rsplit(".", 1)
+                    if section not in sections:
                         sections[section] = dict()
                     section_entry = sections[section]
-                    if not key in section_entry:
+                    if key not in section_entry:
                         section_entry[key] = set()
                     section_entry[key].add(entry.value)
 
                 self._git.validate_config()
                 for section_name, section_dict in sections.items():
-                    config_section = self.ConfigSection(self._git,
-                                                        section_name,
-                                                        section_dict)
+                    config_section = self.ConfigSection(
+                        self._git, section_name, section_dict
+                    )
                     self._sections[section_name] = config_section
                 self._git.validate_config()
 
@@ -401,22 +420,26 @@ class Git(object):
             self.ssh_id = ssh_id
 
         """Check the result of remove branch prune operations."""
+
         def credentials(self, url, username_from_url, allowed_types):
-            return Git._ssh_credentials(self.ssh_id, username_from_url,
-                                        allowed_types)
+            return Git._ssh_credentials(
+                self.ssh_id, username_from_url, allowed_types
+            )
 
         def push_update_reference(self, refname, message):
             if message is not None:
-                raise GitProjectException('Could not prune remote branch: {}'.
-                                format(message))
+                raise GitProjectException(
+                    f"Could not prune remote branch: {message}"
+                )
 
     class LsRemotesCallbacks(pygit2.RemoteCallbacks):
         def __init__(self, ssh_id: str | None):
             self.ssh_id = ssh_id
 
         def credentials(self, url, username_from_url, allowed_types):
-            return Git._ssh_credentials(self.ssh_id, username_from_url,
-                                        allowed_types)
+            return Git._ssh_credentials(
+                self.ssh_id, username_from_url, allowed_types
+            )
 
     # Repository-wide info
     def __init__(self):
@@ -443,7 +466,8 @@ class Git(object):
     def _no_repository_error(self):
         """Return the error to raise when there is no repository."""
         return GitProjectException(
-            f'No git repository at {self._search_path} or any parent')
+            f"No git repository at {self._search_path} or any parent"
+        )
 
     @property
     def _repo(self):
@@ -482,7 +506,7 @@ class Git(object):
         git config. It names a keypair under ~/.ssh.
 
         """
-        return self.config.get_item('ssh', 'id')
+        return self.config.get_item("ssh", "id")
 
     def is_bare_repository(self):
         """Return whether the configured repository is bare."""
@@ -493,12 +517,12 @@ class Git(object):
         unique main branch.
 
         """
-        main = ''
+        main = ""
         nonmain_branches = []
-        for refname in self.iterrefnames(['refs/heads']):
-            if refname == 'refs/heads/main':
+        for refname in self.iterrefnames(["refs/heads"]):
+            if refname == "refs/heads/main":
                 main = refname
-            elif refname == 'refs/heads/master':
+            elif refname == "refs/heads/master":
                 if not main:
                     main = refname
             else:
@@ -540,9 +564,9 @@ class Git(object):
 
         worktree_gitdir = Path(self._repo.path)
 
-        commondir_filename = worktree_gitdir / 'commondir'
+        commondir_filename = worktree_gitdir / "commondir"
 
-        with open(commondir_filename, 'r') as commondir_file:
+        with open(commondir_filename) as commondir_file:
             commondir = commondir_file.read().strip()
 
         # Plain git writes a path relative to the worktree's gitdir.
@@ -588,7 +612,7 @@ class Git(object):
 
     def get_current_refname(self):
         """Get the refname of HEAD."""
-        reference = self._repo.lookup_reference_dwim('HEAD')
+        reference = self._repo.lookup_reference_dwim("HEAD")
         return reference.name
 
     # Low-level committish info, can be branches, hashes, etc.
@@ -597,7 +621,6 @@ class Git(object):
         """Translate a committish to a reference object."""
         commit, ref = self._repo.resolve_refish(committish)
         return ref
-
 
     def committish_to_refname(self, committish):
         """Translate a committish to a refname."""
@@ -646,7 +669,7 @@ class Git(object):
         if isinstance(refspecs, str):
             refspecs = [refspecs]
 
-        self.config.rm_items(f'remote.{remote}', 'fetch')
+        self.config.rm_items(f"remote.{remote}", "fetch")
         for refspec in refspecs:
             self._repo.remotes.add_fetch(remote, refspec)
 
@@ -664,18 +687,18 @@ class Git(object):
     @staticmethod
     def refname_to_branch_name(refname):
         """Translate a refname to a branch name."""
-        prefix = 'refs/heads/'
+        prefix = "refs/heads/"
         if refname.startswith(prefix):
-            return refname[len(prefix):]
-        prefix = 'refs/remotes/'
+            return refname[len(prefix) :]
+        prefix = "refs/remotes/"
         if refname.startswith(prefix):
-            return refname[len(prefix):]
+            return refname[len(prefix) :]
         return refname
 
     @staticmethod
     def branch_name_to_refname(branch_name):
         """Translate a branch name to a refname."""
-        prefix = 'refs/heads/'
+        prefix = "refs/heads/"
         if branch_name.startswith(prefix):
             return branch_name
         return prefix + branch_name
@@ -687,7 +710,9 @@ class Git(object):
         remote = self._repo.remotes[remote]
         for refspec_id in range(0, remote.refspec_count):
             refspec = remote.get_refspec(refspec_id)
-            if refspec.direction == fetch_direction and refspec.src_matches(refname):
+            if refspec.direction == fetch_direction and refspec.src_matches(
+                refname
+            ):
                 remote_refname = refspec.transform(refname)
                 return remote_refname
 
@@ -700,7 +725,9 @@ class Git(object):
         remote = self._repo.remotes[remote]
         for refspec_id in range(0, remote.refspec_count):
             refspec = remote.get_refspec(refspec_id)
-            if refspec.direction == push_direction and refspec.src_matches(refname):
+            if refspec.direction == push_direction and refspec.src_matches(
+                refname
+            ):
                 remote_refname = refspec.transform(refname)
                 return remote_refname
 
@@ -738,8 +765,9 @@ class Git(object):
             return False
         remote_oid = self.get_committish_oid(remote_refname)
         if remote_oid:
-            if local_oid == remote_oid or self._repo.descendant_of(remote_oid,
-                                                                   local_oid):
+            if local_oid == remote_oid or self._repo.descendant_of(
+                remote_oid, local_oid
+            ):
                 # local_oid is reachable from remote_oid,
                 return True
 
@@ -756,7 +784,9 @@ class Git(object):
 
         ref_oid = self.get_committish_oid(refname)
         target_oid = self.get_committish_oid(target)
-        return ref_oid == target_oid or self._repo.descendant_of(target_oid, ref_oid)
+        return ref_oid == target_oid or self._repo.descendant_of(
+            target_oid, ref_oid
+        )
 
     def iterrefnames(self, patterns):
         """Iterate over all of the refnames matching the given pattern."""
@@ -777,7 +807,7 @@ class Git(object):
 
     def detach_head(self):
         """Cause HEAD to be detached."""
-        head_ref = self.get_committish_commit('HEAD')
+        head_ref = self.get_committish_commit("HEAD")
         if not self.is_bare_repository():
             self._repo.checkout_tree(head_ref)
         self._repo.set_head(head_ref.id)
@@ -803,7 +833,9 @@ class Git(object):
         """Set the upstream of branch_name to remote_branch_name."""
         branch_name = self.refname_to_branch_name(branch_name)
         if remote_branch_name:
-            remote_branch_name = self.refname_to_branch_name(remote_branch_name)
+            remote_branch_name = self.refname_to_branch_name(
+                remote_branch_name
+            )
 
         branch = self._repo.branches[branch_name]
 
@@ -836,7 +868,9 @@ class Git(object):
         target_path = path if path else str(Path.cwd() / url_name)
 
         callbacks = Git.RemoteCallbacks(ssh_id)
-        self._repository = pygit2.clone_repository(url, target_path, bare, callbacks=callbacks)
+        self._repository = pygit2.clone_repository(
+            url, target_path, bare, callbacks=callbacks
+        )
         self._config = self.Config(self, self._repository.config)
 
         return str(Path(target_path).resolve())
@@ -864,7 +898,9 @@ class Git(object):
         """
         worktree = self._repo.lookup_worktree(name)
         if os.path.exists(worktree.path):
-            raise GitProjectException('Will not prune existing worktree {name}')
+            raise GitProjectException(
+                "Will not prune existing worktree {name}"
+            )
 
         # Prune the worktree. For some reason, libgit2 treats a worktree as
         # valid unless both the worktree directory and data dir under
@@ -882,9 +918,9 @@ class Git(object):
         ref = self._repo.references.get(name)
         refname = self.committish_to_refname(committish)
         if ref:
-            ref.set_target(refname,
-                           'Reset {} to {} for worktree'.format(name,
-                                                                committish))
+            ref.set_target(
+                refname, f"Reset {name} to {committish} for worktree"
+            )
 
     def delete_branch(self, branch_name):
         """Delete the named branch."""
@@ -902,7 +938,7 @@ class Git(object):
         # it's the same as our local name.
         remote_refname = self.get_remote_push_refname(refname, remote)
         for item in self._repo.remotes[remote].list_heads(
-                callbacks=Git.LsRemotesCallbacks(self.get_ssh_id())
+            callbacks=Git.LsRemotesCallbacks(self.get_ssh_id())
         ):
             if not item.local and item.name == refname:
                 return True
@@ -914,8 +950,8 @@ class Git(object):
         # reason push :branch_name doesn't work.  push
         # :remotes/<remote>/branch_name also doesn't work.
         refname = self.branch_name_to_refname(branch_name)
-        callback = self.RemoteBranchDeleteCallback(self.get_ssh_id());
-        refspecs = [f':{refname}']
+        callback = self.RemoteBranchDeleteCallback(self.get_ssh_id())
+        refspecs = [f":{refname}"]
         remote = self._repo.remotes[remote]
         remote.push(refspecs, callback)
 
@@ -932,43 +968,47 @@ class Git(object):
                 print(line.rstrip())
             raise Exception(message)
 
-        confpath = Path(f'{self._repo.path}')
+        confpath = Path(f"{self._repo.path}")
         # This might be a worktree.  Make sure we have a config file and if not,
         # walk up until se wee one.
-        while not os.path.exists(confpath / 'config'):
+        while not os.path.exists(confpath / "config"):
             newpath = confpath.parent
             if newpath == confpath:
-                raise Exception(f'Cannot find git config file in {self._repo.path}')
+                raise Exception(
+                    f"Cannot find git config file in {self._repo.path}"
+                )
             confpath = newpath
 
-        with open(confpath / 'config') as conffile:
+        with open(confpath / "config") as conffile:
             lines = []
-            secpath = ''
+            secpath = ""
             section = None
             for line in conffile:
                 lines.append(line)
                 # Match a section header.
-                match = re.match(r'^\[([^\s]*)( "([^"]*)")?\]$',
-                                 line.strip())
+                match = re.match(r'^\[([^\s]*)( "([^"]*)")?\]$', line.strip())
                 if match:
                     prefix = match.group(1)
                     suffix = match.group(3)  # Could be None
-                    secpath = f'{prefix}.{suffix}' if suffix else f'{prefix}'
-                    if not secpath in found:
+                    secpath = f"{prefix}.{suffix}" if suffix else f"{prefix}"
+                    if secpath not in found:
                         found[secpath] = set()
                     section = found[secpath]
                 else:
                     # Not a section header, try to match key = value.
-                    match = re.match(r'^\s*([^\s=]+) = (.+)$', line.strip())
+                    match = re.match(r"^\s*([^\s=]+) = (.+)$", line.strip())
                     if match:
                         matched_key = match.group(1)
                         matched_value = match.group(2)
-                        item = f'{matched_key} = {matched_value}'
+                        item = f"{matched_key} = {matched_value}"
                         if section is None:
-                            report_error(lines,
-                                         f'git config {item} not in section')
+                            report_error(
+                                lines, f"git config {item} not in section"
+                            )
 
                         if item in section:
-                            report_error(lines,
-                                         f'git config duplicate entry {secpath}.{item}')
+                            report_error(
+                                lines,
+                                f"git config duplicate entry {secpath}.{item}",
+                            )
                         section.add(item)

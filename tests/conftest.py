@@ -24,18 +24,21 @@
 import contextlib
 import os
 from pathlib import Path
+
 import pygit2
 import pytest
 
-from git_project.test_support import check_config_file
-from git_project.test_support import git_project_runner
-from git_project.test_support import orig_repository
-from git_project.test_support import remote_repository
-from git_project.test_support import local_repository
-from git_project.test_support import reset_directory
-from git_project.test_support import parser_manager
-from git_project.test_support import plugin_manager
-from git_project.test_support import git
-from git_project.test_support import bare_git
-from git_project.test_support import gitproject
-from git_project.test_support import project
+from git_project.test_support import (
+    bare_git,
+    check_config_file,
+    git,
+    git_project_runner,
+    gitproject,
+    local_repository,
+    orig_repository,
+    parser_manager,
+    plugin_manager,
+    project,
+    remote_repository,
+    reset_directory,
+)

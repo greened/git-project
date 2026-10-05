@@ -32,8 +32,9 @@ for each run alias, such as ``build``.
 
 from pathlib import Path
 
-from .substitutable import SubstitutableConfigObject
 from .shell import run_command_with_shell
+from .substitutable import SubstitutableConfigObject
+
 
 class RunnableConfigObject(SubstitutableConfigObject):
     """Base class for objects that use git-config as a backing store and act as
@@ -42,6 +43,7 @@ class RunnableConfigObject(SubstitutableConfigObject):
     Derived classes should implement the ConfigObject protocol.
 
     """
+
     def __init__(self, git, section, subsection, ident, **kwargs):
         """RunnableConfigObject construction.  This should be treated as a private
         method and all construction should occur through the get method.

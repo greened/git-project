@@ -46,11 +46,12 @@ git_project.plugin for what a plugin does at each step.
 
 """
 
+import argparse
+import sys
+from pathlib import Path
+
 import git_project
 
-import argparse
-from pathlib import Path
-import sys
 
 def main_impl(args=None):
     """The main entry point for the git-config tools."""
@@ -64,9 +65,9 @@ def main_impl(args=None):
 
     project_name = Path(sys.argv[0]).name
 
-    prefix = 'git-'
+    prefix = "git-"
     if project_name.startswith(prefix):
-        project_name = project_name[len(prefix):]
+        project_name = project_name[len(prefix) :]
 
     plugin_manager = git_project.PluginManager()
 
@@ -77,7 +78,9 @@ def main_impl(args=None):
     # Now that class hooks have been added, instantiate objects.
     gp = git_project.GitProject.get(git)
 
-    clargs = git_project.parse_arguments(git, gp, project, plugin_manager, args)
+    clargs = git_project.parse_arguments(
+        git, gp, project, plugin_manager, args
+    )
 
     plugin_manager.initialize_plugins(git, gp, project)
 
@@ -87,6 +90,7 @@ def main_impl(args=None):
 
     return rc
 
+
 def main(args=None):
     try:
         rc = main_impl(args)
@@ -95,5 +99,5 @@ def main(args=None):
         # successful run into a non-zero process exit.
         raise SystemExit(rc if isinstance(rc, int) else 0)
     except git_project.GitProjectException as exception:
-        print(f'{exception.message}')
+        print(f"{exception.message}")
         raise SystemExit(-1)

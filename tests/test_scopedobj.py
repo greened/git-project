@@ -23,195 +23,206 @@
 
 from git_project import ScopedConfigObject
 
+
 class ChildScope(ScopedConfigObject):
     def __init__(self, git, project_section, subsection, name):
-        super().__init__(git,
-                         project_section,
-                         subsection,
-                         name,
-                         name=name,
-                         value='ChildScope',
-                         childonly='ChildOnly')
+        super().__init__(
+            git,
+            project_section,
+            subsection,
+            name,
+            name=name,
+            value="ChildScope",
+            childonly="ChildOnly",
+        )
 
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
-        return super().get(git,
-                           project_section,
-                           'childscope',
-                           ident,
-                           **kwargs)
+        return super().get(git, project_section, "childscope", ident, **kwargs)
+
 
 class ParentScope(ScopedConfigObject):
     def __init__(self, git, project_section, subsection, name):
-        super().__init__(git,
-                         project_section,
-                         subsection,
-                         name,
-                         name=name,
-                         value='ParentScope',
-                         parentonly='ParentOnly')
+        super().__init__(
+            git,
+            project_section,
+            subsection,
+            name,
+            name=name,
+            value="ParentScope",
+            parentonly="ParentOnly",
+        )
 
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
-        return super().get(git,
-                           project_section,
-                           'parentscope',
-                           ident,
-                           **kwargs)
+        return super().get(
+            git, project_section, "parentscope", ident, **kwargs
+        )
+
 
 def test_scopedobj_push(reset_directory, git):
-    parent = ParentScope.get(git, 'project', 'parent')
+    parent = ParentScope.get(git, "project", "parent")
 
-    child1 = ChildScope.get(git, 'project', 'child1')
-    child2 = ChildScope.get(git, 'project', 'child2')
-    child3 = ChildScope.get(git, 'project', 'child3')
+    child1 = ChildScope.get(git, "project", "child1")
+    child2 = ChildScope.get(git, "project", "child2")
+    child3 = ChildScope.get(git, "project", "child3")
 
-    parent_name = parent.unscoped('name')
+    parent_name = parent.unscoped("name")
 
     parent.push_scope(child1)
 
-    assert  parent.unscoped('_child') is child1
+    assert parent.unscoped("_child") is child1
 
     parent.push_scope(child2)
 
-    assert  parent.unscoped('_child') is child1
-    assert  child1.unscoped('_child') is child2
+    assert parent.unscoped("_child") is child1
+    assert child1.unscoped("_child") is child2
 
     child1.push_scope(child3)
 
-    assert  parent.unscoped('_child') is child1
-    assert  child1.unscoped('_child') is child2
-    assert  child2.unscoped('_child') is child3
+    assert parent.unscoped("_child") is child1
+    assert child1.unscoped("_child") is child2
+    assert child2.unscoped("_child") is child3
+
 
 def test_scopedobj_pop(reset_directory, git):
-    parent = ParentScope.get(git, 'project', 'parent')
+    parent = ParentScope.get(git, "project", "parent")
 
-    child1 = ChildScope.get(git, 'project', 'child1')
-    child2 = ChildScope.get(git, 'project', 'child2')
+    child1 = ChildScope.get(git, "project", "child1")
+    child2 = ChildScope.get(git, "project", "child2")
 
     parent.push_scope(child1)
     parent.push_scope(child2)
 
-    assert  parent.unscoped('_child') is child1
-    assert  child1.unscoped('_child') is child2
+    assert parent.unscoped("_child") is child1
+    assert child1.unscoped("_child") is child2
 
     popped = parent.pop_scope()
 
     assert popped is child2
-    assert parent.unscoped('_child') is child1
-    assert not hasattr(super(ChildScope, child1), '_child')
+    assert parent.unscoped("_child") is child1
+    assert not hasattr(super(ChildScope, child1), "_child")
 
     popped = parent.pop_scope()
 
     assert popped is child1
-    assert not hasattr(super(ParentScope, parent), '_child')
+    assert not hasattr(super(ParentScope, parent), "_child")
+
 
 def test_scopedobj_attr(reset_directory, git):
-    parent = ParentScope.get(git, 'project', 'parent')
+    parent = ParentScope.get(git, "project", "parent")
 
-    child = ChildScope.get(git, 'project', 'child')
+    child = ChildScope.get(git, "project", "child")
 
-    assert parent.value == 'ParentScope'
-    assert parent.parentonly == 'ParentOnly'
+    assert parent.value == "ParentScope"
+    assert parent.parentonly == "ParentOnly"
 
     parent.push_scope(child)
 
-    assert parent.value == 'ChildScope'
-    assert parent.parentonly == 'ParentOnly'
-    assert parent.childonly == 'ChildOnly'
+    assert parent.value == "ChildScope"
+    assert parent.parentonly == "ParentOnly"
+    assert parent.childonly == "ChildOnly"
 
     parent.pop_scope()
 
-    assert parent.value == 'ParentScope'
-    assert parent.parentonly == 'ParentOnly'
+    assert parent.value == "ParentScope"
+    assert parent.parentonly == "ParentOnly"
+
 
 def test_scopedobj_iteritems(reset_directory, git):
-    parent = ParentScope.get(git, 'project', 'parent')
+    parent = ParentScope.get(git, "project", "parent")
 
-    child = ChildScope.get(git, 'project', 'child')
+    child = ChildScope.get(git, "project", "child")
 
-    result = {(key, item) for key,item in parent.iteritems()}
+    result = {(key, item) for key, item in parent.iteritems()}
 
-    assert result == {('name', 'parent'),
-                      ('value', 'ParentScope'),
-                      ('parentonly', 'ParentOnly')}
+    assert result == {
+        ("name", "parent"),
+        ("value", "ParentScope"),
+        ("parentonly", "ParentOnly"),
+    }
 
     parent.push_scope(child)
 
-    result = {(key, item) for key,item in parent.iteritems()}
+    result = {(key, item) for key, item in parent.iteritems()}
 
-    assert result == {('name', 'child'),
-                      ('value', 'ChildScope'),
-                      ('parentonly', 'ParentOnly'),
-                      ('childonly', 'ChildOnly')}
+    assert result == {
+        ("name", "child"),
+        ("value", "ChildScope"),
+        ("parentonly", "ParentOnly"),
+        ("childonly", "ChildOnly"),
+    }
 
     parent.pop_scope()
 
-    result = {(key, item) for key,item in parent.iteritems()}
+    result = {(key, item) for key, item in parent.iteritems()}
 
-    assert result == {('name', 'parent'),
-                      ('value', 'ParentScope'),
-                      ('parentonly', 'ParentOnly')}
+    assert result == {
+        ("name", "parent"),
+        ("value", "ParentScope"),
+        ("parentonly", "ParentOnly"),
+    }
+
 
 def test_scopedobj_iteritems_multi(reset_directory, git):
-    parent = ParentScope.get(git, 'project', 'parent')
+    parent = ParentScope.get(git, "project", "parent")
 
-    child = ChildScope.get(git, 'project', 'child')
+    child = ChildScope.get(git, "project", "child")
 
-    child.add_item('value', 'second')
+    child.add_item("value", "second")
 
-    result = {(key, item) for key,item in parent.iteritems()}
+    result = {(key, item) for key, item in parent.iteritems()}
 
-    assert result == {('name', 'parent'),
-                      ('value', 'ParentScope'),
-                      ('parentonly', 'ParentOnly')}
+    assert result == {
+        ("name", "parent"),
+        ("value", "ParentScope"),
+        ("parentonly", "ParentOnly"),
+    }
 
     parent.push_scope(child)
 
-    result = {(key, item) for key,item in parent.iteritems()}
+    result = {(key, item) for key, item in parent.iteritems()}
 
-    assert result == {('name', 'child'),
-                      ('value', frozenset(['ChildScope', 'second'])),
-                      ('parentonly', 'ParentOnly'),
-                      ('childonly', 'ChildOnly')}
+    assert result == {
+        ("name", "child"),
+        ("value", frozenset(["ChildScope", "second"])),
+        ("parentonly", "ParentOnly"),
+        ("childonly", "ChildOnly"),
+    }
 
     parent.pop_scope()
 
-    result = {(key, item) for key,item in parent.iteritems()}
+    result = {(key, item) for key, item in parent.iteritems()}
 
-    assert result == {('name', 'parent'),
-                      ('value', 'ParentScope'),
-                      ('parentonly', 'ParentOnly')}
+    assert result == {
+        ("name", "parent"),
+        ("value", "ParentScope"),
+        ("parentonly", "ParentOnly"),
+    }
+
 
 class OtherScope(ScopedConfigObject):
     def __init__(self, git, project_section, subsection, name):
-        super().__init__(git,
-                         project_section,
-                         subsection,
-                         name,
-                         name=name)
+        super().__init__(git, project_section, subsection, name, name=name)
 
     @classmethod
     def get(cls, git, project_section, ident, **kwargs):
-        return super().get(git,
-                           project_section,
-                           'otherscope',
-                           ident,
-                           **kwargs)
+        return super().get(git, project_section, "otherscope", ident, **kwargs)
+
 
 def test_scopedobj_get_scope(reset_directory, git):
-    parent = ParentScope.get(git, 'project', 'parent')
-    child = ChildScope.get(git, 'project', 'child')
-    other = OtherScope.get(git, 'project', 'other')
+    parent = ParentScope.get(git, "project", "parent")
+    child = ChildScope.get(git, "project", "child")
+    other = OtherScope.get(git, "project", "other")
 
-    assert parent.get_scope('parentscope') is parent
-    assert parent.get_scope('childscope') is None
+    assert parent.get_scope("parentscope") is parent
+    assert parent.get_scope("childscope") is None
 
     parent.push_scope(child)
     parent.push_scope(other)
 
     # A scope below the topmost one must still be found.
-    assert parent.get_scope('otherscope') is other
-    assert parent.get_scope('childscope') is child
-    assert parent.get_scope('parentscope') is parent
-    assert parent.get_scope('nosuchscope') is None
+    assert parent.get_scope("otherscope") is other
+    assert parent.get_scope("childscope") is child
+    assert parent.get_scope("parentscope") is parent
+    assert parent.get_scope("nosuchscope") is None
