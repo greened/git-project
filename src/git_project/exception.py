@@ -42,7 +42,3 @@ class GitProjectError(Exception):
     def message(self):
         command = Path(sys.argv[0]).name
         return f"{command}: {self._message}"
-
-
-# The old name, kept so that plugins written against it still import.
-GitProjectException = GitProjectError
