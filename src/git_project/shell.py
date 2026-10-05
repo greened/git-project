@@ -154,8 +154,7 @@ def iter_command(command, clargs=None):
         proc = subprocess.Popen(
             cmd_args, stdout=subprocess.PIPE, stderr=errfile
         )
-        for line in io.TextIOWrapper(proc.stdout):
-            yield line
+        yield from io.TextIOWrapper(proc.stdout)
 
         # Wait, because poll() returns None until the process is reaped.
         rc = proc.wait()

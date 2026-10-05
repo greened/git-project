@@ -22,6 +22,7 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 from importlib.metadata import entry_points
+from typing import Any, ClassVar
 
 
 class PluginManager:
@@ -31,7 +32,7 @@ class PluginManager:
 
     """
 
-    _shared_state = {}
+    _shared_state: ClassVar[dict[str, Any]] = {}
 
     def __init__(self):
         self.__dict__ = PluginManager._shared_state
@@ -61,5 +62,4 @@ class PluginManager:
 
     def iterplugins(self):
         """Iterate over discovered plugins, yielding an instantiated Plugin object."""
-        for plugin in self.plugins:
-            yield plugin
+        yield from self.plugins

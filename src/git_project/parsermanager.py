@@ -23,6 +23,7 @@
 
 import argparse
 import sys
+from typing import Any, ClassVar
 
 from .exception import GitProjectException
 
@@ -113,12 +114,12 @@ class ParserManager:
             self.command_arguments = []
 
             # Add an option to dump machine-readable option information.
-            ActionClass = type(
+            action_class = type(
                 key + "Action", (argparse.Action,), {"parser": self}
             )
 
             def construct(self, option_strings, dest, nargs=None, **kwargs):
-                super(ActionClass, self).__init__(
+                super(action_class, self).__init__(
                     option_strings, dest, nargs=nargs, **kwargs
                 )
 
@@ -142,13 +143,13 @@ class ParserManager:
                     )
                 sys.exit(0)
 
-            ActionClass.__init__ = construct
-            ActionClass.__call__ = call
+            action_class.__init__ = construct
+            action_class.__call__ = call
 
             parser.add_argument(
                 "--menu",
                 nargs="?",
-                action=ActionClass,
+                action=action_class,
                 help="Dump machine-readable help",
             )
 
@@ -244,7 +245,7 @@ class ParserManager:
             """
             return self.parser.get_default(name)
 
-    _shared_state = {}
+    _shared_state: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, gitproject, project):
         """ParserManager constructor.

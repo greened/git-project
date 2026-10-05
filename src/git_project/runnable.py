@@ -30,8 +30,6 @@ for each run alias, such as ``build``.
 
 """
 
-from pathlib import Path
-
 from .shell import run_command_with_shell
 from .substitutable import SubstitutableConfigObject
 

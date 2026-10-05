@@ -143,7 +143,6 @@ def test_git_config(reset_directory, local_repository):
     def check_lines(
         section, key, value, section_present=True, key_present=True
     ):
-        found = False
         with open("config") as conffile:
             found_section = False
             for line in conffile:
@@ -233,7 +232,7 @@ def test_git_config(reset_directory, local_repository):
     )
 
     config.set_item("testrm", "one", "1")
-    values = [item for item in config.iter_multival("testrm", "one")]
+    values = list(config.iter_multival("testrm", "one"))
     assert values == ["1"]
 
     config.rm_item("testrm", "one", ".*")
@@ -242,7 +241,7 @@ def test_git_config(reset_directory, local_repository):
     )
 
     config.set_item("testrm2", "one", "1")
-    values = [item for item in config.iter_multival("testrm2", "one")]
+    values = list(config.iter_multival("testrm2", "one"))
     assert values == ["1"]
 
     # Make sure we still delete things if we're not in the git repository.
@@ -258,8 +257,8 @@ def test_git_config(reset_directory, local_repository):
 
     config.set_item("testrm3", "one", "1")
     config.add_item("testrm3", "one", "2")
-    values = [item for item in config.iter_multival("testrm3", "one")]
-    assert {value for value in values} == {"1", "2"}
+    values = list(config.iter_multival("testrm3", "one"))
+    assert set(values) == {"1", "2"}
 
     config.rm_items("testrm3", "one")
     assert check_lines(
@@ -271,8 +270,8 @@ def test_git_config(reset_directory, local_repository):
 
     config.set_item("testrm4", "one", "1")
     config.add_item("testrm4", "one", "2")
-    values = [item for item in config.iter_multival("testrm4", "one")]
-    assert {value for value in values} == {"1", "2"}
+    values = list(config.iter_multival("testrm4", "one"))
+    assert set(values) == {"1", "2"}
 
     # Make sure we still delete things if we're not in the git repository.
     prev_dir = Path.cwd()
@@ -332,8 +331,8 @@ def test_git_worktree(reset_directory, local_repository):
     assert git.has_repo()
 
     # Create a branch for the worktree.
-    commit, ref = git._repo.resolve_refish("HEAD")
-    branch = git._repo.branches.create("test-wt", commit)
+    commit, _ref = git._repo.resolve_refish("HEAD")
+    git._repo.branches.create("test-wt", commit)
 
     worktree_checkout_path = Path.cwd() / ".." / ".." / "test-wt"
 
@@ -343,11 +342,10 @@ def test_git_worktree(reset_directory, local_repository):
 
     assert os.path.exists(worktree_path)
 
-    try:
+    with pytest.raises(
+        git_project.GitProjectException, match="Will not prune"
+    ):
         git.prune_worktree("test-wt")
-        assert False, "Pruned a worktree when should not have"
-    except:
-        pass
 
     shutil.rmtree(worktree_checkout_path)
 
@@ -571,7 +569,7 @@ def test_git_iterrefnames(reset_directory, local_repository):
 
     git = git_project.Git()
 
-    refnamelist = [refname for refname in git.iterrefnames(["refs/heads/"])]
+    refnamelist = list(git.iterrefnames(["refs/heads/"]))
 
     assert refnamelist == [
         "refs/heads/master",
@@ -590,7 +588,7 @@ def test_git_iterrefnames_str(reset_directory, local_repository):
 
     git = git_project.Git()
 
-    refnamelist = [refname for refname in git.iterrefnames("refs/heads/")]
+    refnamelist = list(git.iterrefnames("refs/heads/"))
 
     assert refnamelist == [
         "refs/heads/master",
@@ -904,12 +902,12 @@ def test_git_fetch_remote(reset_directory, git):
 
     git.fetch_remote("origin")
 
-    refs = [ref for ref in git.iterrefnames(["refs/remotes/origin/changed"])]
+    refs = list(git.iterrefnames(["refs/remotes/origin/changed"]))
     assert len(refs) > 0
 
 
 def test_git_iterbranches(reset_directory, git):
-    branches = {branch for branch in git.iterbranches()}
+    branches = set(git.iterbranches())
     assert branches == {
         "master",
         "merged_local",
@@ -1043,8 +1041,8 @@ def test_git_worktree_subdir(reset_directory, local_repository):
     assert git.has_repo()
 
     # Create a branch for the worktree.
-    commit, ref = git._repo.resolve_refish("HEAD")
-    branch = git._repo.branches.create("user/test-wt", commit)
+    commit, _ref = git._repo.resolve_refish("HEAD")
+    git._repo.branches.create("user/test-wt", commit)
 
     worktree_checkout_path = Path.cwd() / ".." / ".." / "user" / "test-wt"
 
@@ -1057,11 +1055,10 @@ def test_git_worktree_subdir(reset_directory, local_repository):
     wtgit = git_project.Git()
     assert wtgit.get_current_branch() == "user/test-wt"
 
-    try:
+    with pytest.raises(
+        git_project.GitProjectException, match="Will not prune"
+    ):
         git.prune_worktree("test-wt")
-        assert False, "Pruned a worktree when should not have"
-    except:
-        pass
 
     shutil.rmtree(worktree_checkout_path)
 
@@ -1078,8 +1075,8 @@ def test_git_worktree_get_current_worktree(reset_directory, local_repository):
     assert git.has_repo()
 
     # Create a branch for the worktree.
-    commit, ref = git._repo.resolve_refish("HEAD")
-    branch = git._repo.branches.create("user/test-wt", commit)
+    commit, _ref = git._repo.resolve_refish("HEAD")
+    git._repo.branches.create("user/test-wt", commit)
 
     worktree_checkout_path = Path.cwd() / ".." / ".." / "user" / "test-wt"
 

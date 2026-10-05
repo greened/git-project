@@ -46,7 +46,6 @@ git_project.plugin for what a plugin does at each step.
 
 """
 
-import argparse
 import sys
 from pathlib import Path
 
@@ -100,4 +99,4 @@ def main(args=None):
         raise SystemExit(rc if isinstance(rc, int) else 0)
     except git_project.GitProjectException as exception:
         print(f"{exception.message}")
-        raise SystemExit(-1)
+        raise SystemExit(-1) from None

@@ -21,9 +21,6 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-import os
-import shutil
-from pathlib import Path
 
 import git_project
 from git_project.test_support import check_config_file
@@ -67,8 +64,6 @@ def test_runnable_substitute_command(reset_directory, git):
 
     project = MyProject()
 
-    clargs = dict()
-
     command = runnable.substitute_command(git, project)
 
     assert (
@@ -92,8 +87,6 @@ def test_runnable_substitute_command_recursive(reset_directory, git):
     runnable = MyRunnable.get(git, "project", "test")
 
     project = MyProject()
-
-    clargs = dict()
 
     command = runnable.substitute_command(git, project)
 
@@ -173,7 +166,7 @@ def test_runnable_run_no_dup(reset_directory, git):
 
     check_config_file("project.myproject", "build", {"devrel", "check-devrel"})
 
-    clargs = dict()
+    clargs = {}
 
     runnable.run(git, project, clargs)
 

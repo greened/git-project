@@ -21,14 +21,12 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-import contextlib
 import os
 import re
 from pathlib import Path
 
 import pygit2
 import pytest
-import pytest_console_scripts
 
 import git_project
 
@@ -51,13 +49,15 @@ class ParserManagerMock:
                     return False
                 if len(self.args) != len(other.args):
                     return False
-                for self_arg, other_arg in zip(self.args, other.args):
+                for self_arg, other_arg in zip(
+                    self.args, other.args, strict=True
+                ):
                     if self_arg != other_arg:
                         return False
                 if len(self.kwargs) != len(other.kwargs):
                     return False
                 for self_kwarg, other_kwarg in zip(
-                    self.kwargs.items(), other.kwargs.items()
+                    self.kwargs.items(), other.kwargs.items(), strict=True
                 ):
                     if self_kwarg[0] != other_kwarg[0]:
                         return False
@@ -65,28 +65,36 @@ class ParserManagerMock:
                         return False
                 return True
 
+            def __hash__(self):
+                raise TypeError(f"unhashable type: '{type(self).__name__}'")
+
         def __init__(self, key):
             self.key = key
             self.arguments = []
-            self.defaults = dict()
+            self.defaults = {}
 
         def __eq__(self, other):
             if self.key != other.key:
                 return False
             if len(self.arguments) != len(other.arguments):
                 return False
-            for self_arg, other_arg in zip(self.arguments, other.arguments):
+            for self_arg, other_arg in zip(
+                self.arguments, other.arguments, strict=True
+            ):
                 if self_arg != other_arg:
                     return False
             if len(self.defaults) != len(other.defaults):
                 return False
             for self_default, other_default in zip(
-                self.defaults.items(), other.defaults.items()
+                self.defaults.items(), other.defaults.items(), strict=True
             ):
-                if self_defaults[0] != other_default[0]:
+                if self_default[0] != other_default[0]:
                     return False
-                if self_defaults[1] != other_default[1]:
+                if self_default[1] != other_default[1]:
                     return False
+
+        def __hash__(self):
+            raise TypeError(f"unhashable type: '{type(self).__name__}'")
 
         def add_argument(self, name, *args, **kwargs):
             self.arguments.append(self.Argument(name, *args, **kwargs))
@@ -104,7 +112,7 @@ class ParserManagerMock:
             self.parsers = []
 
     def __init__(self):
-        self.parsers = dict()
+        self.parsers = {}
 
     def add_subparser(self, parser, key, **kwargs):
         return self.SubparserMock(key)
@@ -206,8 +214,6 @@ def init_remote(remote_path, local_path):
         "origin", "+refs/heads/*:refs/remotes/origin/*"
     )
 
-    origin = local_repo.remotes["origin"]
-
     commit = local_repo.revparse_single("refs/heads/master")
     merged_remote_coid = create_commit(
         local_repo, "refs/heads/master", [commit.id], "MergedRemote"
@@ -281,7 +287,7 @@ def init_clone(url, path):
     notpushed_commit = repo.revparse_single("refs/remotes/origin/notpushed")
     repo.branches.create("notpushed", notpushed_commit)
 
-    notpushed_coid = create_commit(
+    create_commit(
         repo, "refs/heads/notpushed", [pushed_commit.id], "NotPushed"
     )
     # -------merged_remote, origin/old_master, origin/merged_remote--origin/master--origin/remote_only
@@ -330,11 +336,9 @@ def init_clone(url, path):
 
     master_commit = repo.revparse_single("refs/heads/master")
 
-    unmerged_branch = repo.branches.create("unmerged", master_commit)
+    repo.branches.create("unmerged", master_commit)
 
-    unmerged_coid = create_commit(
-        repo, "refs/heads/unmerged", [master_commit.id], "Unmerged"
-    )
+    create_commit(repo, "refs/heads/unmerged", [master_commit.id], "Unmerged")
     # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only
     #   |                                \
     #   |                                 `---master, merged_local--unmerged
@@ -347,9 +351,7 @@ def init_clone(url, path):
         "refs/remotes/origin/remote_only"
     )
 
-    pushed_remote_only_branch = repo.branches.create(
-        "pushed_remote_only", remote_only_commit
-    )
+    repo.branches.create("pushed_remote_only", remote_only_commit)
 
     # -------merged_remote, origin/old_master--origin/master, pushed_indirectly--origin/remote_only, pushed_remote_only
     #   |                                \
@@ -431,15 +433,10 @@ def parser_manager_mock(request):
 
 
 @pytest.fixture(scope="function")
-def config_object_class_mock(request):
-    return ConfigObjectMock
-
-
-@pytest.fixture(scope="function")
 def plugin_mock(request):
     plugin_name = getattr(request.module, "plugin_name", "")
     plugin_class = getattr(request.module, "plugin_class", "")
-    return PluginMock(plugin_name, request.plugin_class)
+    return PluginMock(plugin_name, plugin_class)
 
 
 @pytest.fixture(scope="function")
@@ -472,7 +469,7 @@ def parser_manager(request, gitproject, project):
     parser_manager = git_project.ParserManager(gitproject, project)
     parser = parser_manager.find_parser("__main__")
 
-    command_subparser = parser_manager.add_subparser(
+    parser_manager.add_subparser(
         parser, "command", dest="command", help="commands"
     )
     return parser_manager
@@ -521,7 +518,6 @@ def git_project_runner(reset_directory, script_runner):
 def check_config_file(
     section, key, values, section_present=True, key_present=True
 ):
-    found = False
     parts = section.split(".", 1)
     prefix = parts[0]
     suffix = parts[1] if len(parts) == 2 else None
@@ -550,8 +546,8 @@ def check_config_file(
                 if match:
                     matched_value = match.group(1)
                     if matched_value in found_values:
-                        for line in lines:
-                            print(line.rstrip())
+                        for seen_line in lines:
+                            print(seen_line.rstrip())
                         print(f"Duplicate values {key} = {matched_value}")
                     assert matched_value not in found_values
                     found_values.add(matched_value)

@@ -46,8 +46,8 @@ class GitProject(ConfigObject):
 
         """
         assert section == "gitproject"
-        assert subsection == None
-        assert ident == None
+        assert subsection is None
+        assert ident is None
         super().__init__(git, section, subsection, ident)
 
     @classmethod
@@ -63,5 +63,4 @@ class GitProject(ConfigObject):
 
     def iternames(self):
         """Iterate over the configured project names."""
-        for name in self.iter_multival("name"):
-            yield name
+        yield from self.iter_multival("name")

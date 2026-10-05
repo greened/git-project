@@ -23,9 +23,7 @@
 
 import os
 import re
-import shlex
-import subprocess
-import urllib
+import urllib.parse
 from pathlib import Path
 
 import progressbar
@@ -160,8 +158,7 @@ class Git:
 
                 def itervalues(self):
                     """Iterate over the values of a multi-value key."""
-                    for value in self._values:
-                        yield value
+                    yield from self._values
 
                 def get_value(self):
                     """Get the single value of this key.  Raise an exception if there is more than
@@ -200,7 +197,7 @@ class Git:
             def __init__(self, git, name, content_dict):
                 self._git = git
                 self._name = name
-                self._items = dict()
+                self._items = {}
                 for key, values in content_dict.items():
                     config_item = self.ConfigItem(self.itemname(key))
                     for value in values:
@@ -274,8 +271,7 @@ class Git:
                 """Iterate over the multiple values of the given key."""
                 item = self._items.get(self.itemname(key), None)
                 if item:
-                    for value in item.itervalues():
-                        yield value
+                    yield from item.itervalues()
 
             def rm_items(self, key):
                 """Remove all values for the given key."""
@@ -314,7 +310,7 @@ class Git:
 
         def __init__(self, git, config):
             self._git = git
-            self._sections = dict()
+            self._sections = {}
 
             if self._git.has_repo():
                 # First gather the contents of each section.  We do it this way
@@ -323,11 +319,11 @@ class Git:
                 # contains everything, we don't want to call add_entry again and
                 # add duplicates.  So we call a proper ConfigSection
                 # intialization after gathering all the entries.
-                sections = dict()
+                sections = {}
                 for entry in config:
                     section, key = entry.name.rsplit(".", 1)
                     if section not in sections:
-                        sections[section] = dict()
+                        sections[section] = {}
                     section_entry = sections[section]
                     if key not in section_entry:
                         section_entry[key] = set()
@@ -356,7 +352,7 @@ class Git:
             """Set the value of key under section named by section_name to value."""
             section = self._sections.get(section_name, None)
             if not section:
-                section = self.ConfigSection(self._git, section_name, dict())
+                section = self.ConfigSection(self._git, section_name, {})
             section.set_item(key, value)
             self._sections[section_name] = section
 
@@ -367,7 +363,7 @@ class Git:
             """
             section = self._sections.get(section_name, None)
             if not section:
-                section = self.ConfigSection(self._git, section_name, dict())
+                section = self.ConfigSection(self._git, section_name, {})
             if not section.has_value(key, value):
                 section.add_item(key, value)
             self._sections[section_name] = section
@@ -376,8 +372,7 @@ class Git:
             """Iterate over the multiple values of the given multi-value key."""
             section = self.get_section(section_name)
             if section:
-                for value in section.iter_multival(key):
-                    yield value
+                yield from section.iter_multival(key)
 
         def has_item(self, section_name, key):
             """Return whether the named section has key in it."""
@@ -455,9 +450,12 @@ class Git:
         """
         self._search_path = Path(gitdir).resolve()
         repo_path = pygit2.discover_repository(self._search_path)
+        self._repository: pygit2.Repository | None
         if repo_path:
             self._repository = pygit2.Repository(repo_path)
-            self._config = self.Config(self, self._repository.config)
+            self._config: Git.Config | None = self.Config(
+                self, self._repository.config
+            )
             self.validate_config()
         else:
             self._repository = None
@@ -547,7 +545,7 @@ class Git:
             return True
 
         status = self._repo.status()
-        for filepath, flags in status.items():
+        for _filepath, flags in status.items():
             if flags != pygit2.GIT_STATUS_CURRENT:
                 return False
 
@@ -619,7 +617,7 @@ class Git:
 
     def committish_to_ref(self, committish):
         """Translate a committish to a reference object."""
-        commit, ref = self._repo.resolve_refish(committish)
+        _commit, ref = self._repo.resolve_refish(committish)
         return ref
 
     def committish_to_refname(self, committish):
@@ -637,7 +635,7 @@ class Git:
 
     def committish_exists(self, committish):
         """Return whether the committish exists in the repository."""
-        # Read the repository before the try.  The bare except below would
+        # Read the repository before the try. The except below would
         # otherwise swallow the no-repository error and answer False, which
         # says the committish is absent rather than that there is nothing to
         # look in.
@@ -645,7 +643,7 @@ class Git:
         try:
             repo.revparse_single(committish)
             return True
-        except:
+        except Exception:
             return False
 
     def is_strict_ancestor(self, committish, descendant):
@@ -800,8 +798,7 @@ class Git:
 
     def iterbranches(self):
         """Iterate over all of the repository's branches."""
-        for branch in self._repo.branches:
-            yield branch
+        yield from self._repo.branches
 
     # Higher-level commands.
 
@@ -931,12 +928,8 @@ class Git:
     def remote_branch_exists(self, branch_name, remote):
         """Return whether the given branch exists on the given remote."""
         refname = self.branch_name_to_refname(branch_name)
-        # FIXME: This is likely to be something like
-        # refs/remotes/<remote>/<branch_name> but that is not what it's called
-        # in the list_heads call.  There doesn't seem to be a way to get the
-        # (local) name of the branch on the remote side.  Assume for now that
-        # it's the same as our local name.
-        remote_refname = self.get_remote_push_refname(refname, remote)
+        # FIXME: There is no way to get the branch's name on the remote side,
+        # so assume it matches the local name.
         for item in self._repo.remotes[remote].list_heads(
             callbacks=Git.LsRemotesCallbacks(self.get_ssh_id())
         ):
@@ -961,7 +954,7 @@ class Git:
         if not self.has_repo():
             return
 
-        found = dict()
+        found = {}
 
         def report_error(lines, message):
             for line in lines:

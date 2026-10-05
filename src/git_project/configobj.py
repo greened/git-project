@@ -118,7 +118,7 @@ class ConfigObject:
         kwargs: Keyword arguments of property values to set upon construction.
 
         """
-        inits = dict()
+        inits = {}
 
         gitsection = ConfigObject._get_full_section(
             ConfigObject._map_project_section(project_section),
@@ -131,7 +131,7 @@ class ConfigObject:
                 for key, item in config_section:
                     name = key.rsplit(".", 1)[-1]
                     if item.is_multival():
-                        inits[name] = [value for value in item.itervalues()]
+                        inits[name] = list(item.itervalues())
                     else:
                         inits[name] = item.get_value()
 
@@ -218,7 +218,7 @@ class ConfigObject:
         git config when written."""
 
         def fun_get(self):
-            result = {item for item in self.iter_multival(name)}
+            result = set(self.iter_multival(name))
             if not result:
                 return None
             if len(result) == 1:
@@ -310,8 +310,7 @@ class ConfigObject:
 
     def iter_multival(self, name):
         """Iterate over the multiple values of a multi-value git config key."""
-        for value in self._git.config.iter_multival(self._section, name):
-            yield value
+        yield from self._git.config.iter_multival(self._section, name)
 
     def __repr__(self):
         """Serialize the object as a string."""
@@ -329,7 +328,7 @@ class ConfigObject:
 
     def rm(self):
         """Remove the entire section of this object from the git config."""
-        for key, value in self.iteritems():
+        for key, _value in self.iteritems():
             self.rm_items(key)
         # Removing all section entries removes the section.
         # self._git.config.rm_section(self._section)

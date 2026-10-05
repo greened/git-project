@@ -22,7 +22,6 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import os
-import shutil
 from pathlib import Path
 
 import git_project
@@ -59,25 +58,25 @@ def test_project_get_in_repository(git):
 
 
 def test_project_add_remote(project):
-    remotes = {remote for remote in project.iterremotes()}
+    remotes = set(project.iterremotes())
 
     assert remotes == {"origin"}
 
     project.add_remote("upstream")
 
-    remotes = {remote for remote in project.iterremotes()}
+    remotes = set(project.iterremotes())
 
     assert remotes == {"origin", "upstream"}
 
 
 def test_project_add_branch(project):
-    branches = {branch for branch in project.iterbranches()}
+    branches = set(project.iterbranches())
 
     assert branches == {"master", "remote_only"}
 
     project.add_branch("project")
 
-    branches = {branch for branch in project.iterbranches()}
+    branches = set(project.iterbranches())
 
     assert branches == {"master", "project", "remote_only"}
 
@@ -86,15 +85,15 @@ def test_project_iterrefnames(project):
     print(f"In {Path.cwd()}")
     project.add_branch("pushed")
 
-    branches = {branch for branch in project.iterbranches()}
+    branches = set(project.iterbranches())
 
     assert branches == {"master", "pushed", "remote_only"}
 
-    remotes = {remote for remote in project.iterremotes()}
+    remotes = set(project.iterremotes())
 
     assert remotes == {"origin"}
 
-    refs = {ref for ref in project.iterrefnames()}
+    refs = set(project.iterrefnames())
 
     assert refs == {
         "refs/heads/master",

@@ -67,7 +67,7 @@ def test_scopedobj_push(reset_directory, git):
     child2 = ChildScope.get(git, "project", "child2")
     child3 = ChildScope.get(git, "project", "child3")
 
-    parent_name = parent.unscoped("name")
+    parent.unscoped("name")
 
     parent.push_scope(child1)
 

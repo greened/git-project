@@ -22,8 +22,6 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import os
-import shutil
-from pathlib import Path
 
 import git_project
 
@@ -35,7 +33,7 @@ def test_gitproject_get(reset_directory, local_repository):
 
     gp = git_project.GitProject.get(git)
 
-    projects = [name for name in gp.iternames()]
+    projects = list(gp.iternames())
 
     assert projects == []
 
@@ -51,6 +49,6 @@ def test_gitproject_iternames(reset_directory, local_repository):
     gp.add_item("name", "new")
     gp.add_item("name", "test")
 
-    projects = {name for name in gp.iternames()}
+    projects = set(gp.iternames())
 
     assert projects == {"test", "new"}

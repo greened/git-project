@@ -49,7 +49,6 @@ Python expression in braces. Treat config values as code.
 from pathlib import Path
 
 from .configobj import ConfigObject
-from .shell import run_command_with_shell
 
 
 class SubstitutableConfigObject(ConfigObject):
@@ -93,13 +92,11 @@ class SubstitutableConfigObject(ConfigObject):
         """
         formats = dict(formats or {})
 
-        found_path = False
-
         # Substitute for project-global values.
         for key, value in project.iteritems():
-            if key == self.get_subsection():
-                value = self.get_ident()
-            formats[key] = value
+            formats[key] = (
+                self.get_ident() if key == self.get_subsection() else value
+            )
 
         # Substitute for values in self.
         for key, value in self.iteritems():

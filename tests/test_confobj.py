@@ -21,11 +21,7 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-import inspect
 import os
-import re
-import shutil
-from pathlib import Path
 
 import git_project
 from git_project.test_support import check_config_file
@@ -41,7 +37,6 @@ class MyThing(git_project.ConfigObject):
 
 
 def check_lines(section, key, value, section_present=True, key_present=True):
-    found = False
     prefix, suffix = section.split(".", 1)
 
     with open("config") as conffile:
@@ -147,7 +142,7 @@ def test_confobj_multival(reset_directory, git):
     thing.add_item("test", "one")
     thing.add_item("test", "two")
 
-    values = {value for value in thing.iter_multival("test")}
+    values = set(thing.iter_multival("test"))
     assert values == {"one", "two"}
 
 
@@ -233,7 +228,7 @@ def test_confobj_get_multi(reset_directory, git):
 
     thing.add_item("second", "secondsecond")
 
-    newthing = MyThing.get(git, "project", "test")
+    MyThing.get(git, "project", "test")
 
     result = [(key, value) for key, value in thing.iteritems()]
 
@@ -252,7 +247,7 @@ def test_confobj_get_no_dup(reset_directory, git):
     thing.add_item("second", "secondsecond")
     thing.add_item("second", "secondthird")
 
-    newthing = MyThing.get(git, "project", "test")
+    MyThing.get(git, "project", "test")
 
     check_config_file("project.mything.test", "first", {"firstdefault"})
 
@@ -264,7 +259,7 @@ def test_confobj_get_no_dup(reset_directory, git):
 
     os.chdir(git._repo.path)
 
-    newgit = git_project.Git()
+    git_project.Git()
 
     check_config_file("project.mything.test", "first", {"firstdefault"})
 

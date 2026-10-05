@@ -187,3 +187,24 @@ from .runnable import RunnableConfigObject
 from .scopedobj import ScopedConfigObject
 from .shell import capture_command, iter_command, run_command_with_shell
 from .substitutable import SubstitutableConfigObject
+
+__all__ = [
+    "ConfigObject",
+    "Git",
+    "GitProject",
+    "GitProjectException",
+    "ParserManager",
+    "Plugin",
+    "PluginManager",
+    "Project",
+    "RunnableConfigObject",
+    "ScopedConfigObject",
+    "SubstitutableConfigObject",
+    "add_top_level_command",
+    "capture_command",
+    "get_or_add_top_level_command",
+    "iter_command",
+    "main_impl",
+    "parse_arguments",
+    "run_command_with_shell",
+]

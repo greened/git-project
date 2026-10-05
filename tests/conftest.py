@@ -21,16 +21,8 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-import contextlib
-import os
-from pathlib import Path
-
-import pygit2
-import pytest
-
 from git_project.test_support import (
     bare_git,
-    check_config_file,
     git,
     git_project_runner,
     gitproject,
@@ -42,3 +34,18 @@ from git_project.test_support import (
     remote_repository,
     reset_directory,
 )
+
+# pytest registers the fixtures imported here. __all__ marks them as used.
+__all__ = [
+    "bare_git",
+    "git",
+    "git_project_runner",
+    "gitproject",
+    "local_repository",
+    "orig_repository",
+    "parser_manager",
+    "plugin_manager",
+    "project",
+    "remote_repository",
+    "reset_directory",
+]

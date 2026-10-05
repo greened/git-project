@@ -22,7 +22,6 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import os
-import shutil
 from pathlib import Path
 
 import pytest
@@ -194,7 +193,7 @@ def test_substitutable_substitute_command_subsection(reset_directory, git):
     )
 
 
-def test_substitutable_substitute_project(reset_directory, git):
+def test_substitutable_substitute_project_in_target(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(
@@ -285,7 +284,7 @@ def test_substitutable_substitute_formats(reset_directory, git):
     )
 
 
-def test_substitutable_substitute_gitdir(reset_directory, git):
+def test_substitutable_substitute_gitdir_with_formats(reset_directory, git):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(
@@ -313,7 +312,9 @@ def test_substitutable_substitute_gitdir(reset_directory, git):
     )
 
 
-def test_substitutable_substitute_git_common_dir(reset_directory, git):
+def test_substitutable_substitute_git_common_dir_with_formats(
+    reset_directory, git
+):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(
@@ -377,9 +378,7 @@ def test_substitutable_substitute_command_rebase(reset_directory, git):
     current_branch = git.get_current_branch()
 
     os.chdir(git.get_working_copy_root())
-    output = git_project.run_command_with_shell(
-        "git rebase --exec false origin/master"
-    )
+    git_project.run_command_with_shell("git rebase --exec false origin/master")
 
     command = substitutable.substitute_value(
         git, project, substitutable.command
@@ -410,8 +409,8 @@ def test_substitutable_substitute_command_rebase_worktree(
     project = MyProject()
 
     # Create a branch for the worktree.
-    commit, ref = git._repo.resolve_refish("HEAD")
-    branch = git._repo.branches.create("user/test-subst", commit)
+    commit, _ref = git._repo.resolve_refish("HEAD")
+    git._repo.branches.create("user/test-subst", commit)
 
     worktree_checkout_path = Path.cwd() / ".." / ".." / "user" / "test-subst"
 
@@ -454,8 +453,8 @@ def test_substitutable_substitute_fstring(reset_directory, git):
     project = MyProject()
 
     # Create a branch.
-    commit, ref = git._repo.resolve_refish("HEAD")
-    branch = git._repo.branches.create("imerge/user/test-fstr", commit)
+    commit, _ref = git._repo.resolve_refish("HEAD")
+    git._repo.branches.create("imerge/user/test-fstr", commit)
 
     git.checkout("imerge/user/test-fstr")
     current_branch = git.get_current_branch()
@@ -492,10 +491,8 @@ def test_substitutable_substitute_recursive(reset_directory, git):
 
     project = MyProject()
 
-    with pytest.raises(Exception) as e:
-        command = substitutable.substitute_value(
-            git, project, substitutable.command
-        )
+    with pytest.raises(RuntimeError, match="Recursive substitution"):
+        substitutable.substitute_value(git, project, substitutable.command)
 
 
 def test_substitutable_substitute_project(reset_directory, git):

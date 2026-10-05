@@ -208,10 +208,9 @@ class ScopedConfigObject(ConfigObject):
 
     def iteritems(self):
         """Iterate over all key, value items in all scopes."""
-        properties = dict()
+        properties = {}
         properties = self._iteritems_impl(properties)
-        for key, value in properties.items():
-            yield key, value
+        yield from properties.items()
 
     def get_scope(self, subsection):
         """Return the scope with the given subsection, else None.

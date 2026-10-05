@@ -21,7 +21,6 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
-from pathlib import Path
 
 from .git import Git
 from .scopedobj import ScopedConfigObject
@@ -107,8 +106,7 @@ class Project(ScopedConfigObject):
 
     def iterremotes(self):
         """Iterate over the remotes for this project."""
-        for remote in self.iter_multival("remote"):
-            yield remote
+        yield from self.iter_multival("remote")
 
     def add_branch(self, branch):
         """Add a branch for this project.  Project branches are considered to be
@@ -124,8 +122,7 @@ class Project(ScopedConfigObject):
 
     def iterbranches(self):
         """Iterate over the project's branches."""
-        for branch in self.iter_multival("branch"):
-            yield branch
+        yield from self.iter_multival("branch")
 
     # Git interface customized to project.
 

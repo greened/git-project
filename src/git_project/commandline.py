@@ -41,19 +41,8 @@ git-project itself, the active project is 'project'.
 
 """
 
-import argparse
-import getpass
-import io
-import os
-import re
-import shlex
-import subprocess
 import sys
-import urllib.parse
 from importlib import metadata
-from pathlib import Path
-
-import pygit2
 
 from .parsermanager import ParserManager
 
