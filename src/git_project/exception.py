@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 
-class GitProjectException(Exception):
+class GitProjectError(Exception):
     """An error to report to the user.
 
     Raise it from a command for a failure the user can act on. git-project
@@ -42,3 +42,7 @@ class GitProjectException(Exception):
     def message(self):
         command = Path(sys.argv[0]).name
         return f"{command}: {self._message}"
+
+
+# The old name, kept so that plugins written against it still import.
+GitProjectException = GitProjectError

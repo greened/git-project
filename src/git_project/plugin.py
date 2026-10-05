@@ -144,7 +144,7 @@ A plugin's class docstring is its manual. ``manpage`` returns it, and the
 help plugin in git-project-core-plugins shows it for
 ``git <project> help <command>``.
 
-For a failure the user can act on, raise GitProjectException. git-project
+For a failure the user can act on, raise GitProjectError. git-project
 prints its message and exits with a failure status.
 
 Testing

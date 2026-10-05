@@ -107,4 +107,4 @@ Shell commands
 Errors
 ------
 
-.. autoclass:: GitProjectException
+.. autoclass:: GitProjectError

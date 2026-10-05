@@ -41,7 +41,7 @@ does the work, in this order:
 #. Check the config file again, and return what ``func`` returned.
 
 main exits with that value when it is an int, and with 0 otherwise. A
-GitProjectException prints its message and exits with a failure status. See
+GitProjectError prints its message and exits with a failure status. See
 git_project.plugin for what a plugin does at each step.
 
 """
@@ -97,6 +97,6 @@ def main(args=None):
         # domain object (e.g. the created Worktree), which must not turn a
         # successful run into a non-zero process exit.
         raise SystemExit(rc if isinstance(rc, int) else 0)
-    except git_project.GitProjectException as exception:
+    except git_project.GitProjectError as exception:
         print(f"{exception.message}")
         raise SystemExit(-1) from None

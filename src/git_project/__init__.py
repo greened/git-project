@@ -175,7 +175,7 @@ from .commandline import (
     parse_arguments,
 )
 from .configobj import ConfigObject
-from .exception import GitProjectException
+from .exception import GitProjectError, GitProjectException
 from .git import Git
 from .gitproject import GitProject
 from .main import main_impl
@@ -192,6 +192,7 @@ __all__ = [
     "ConfigObject",
     "Git",
     "GitProject",
+    "GitProjectError",
     "GitProjectException",
     "ParserManager",
     "Plugin",

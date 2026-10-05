@@ -25,7 +25,7 @@ import argparse
 import sys
 from typing import Any, ClassVar
 
-from .exception import GitProjectException
+from .exception import GitProjectError
 
 
 class ParserManager:
@@ -276,7 +276,7 @@ class ParserManager:
 
         """
         if key in self.registered_subparsers:
-            raise GitProjectException(f"Subparser key conflict: {key}")
+            raise GitProjectError(f"Subparser key conflict: {key}")
         self.registered_subparsers.add(key)
         subparser = parser.Subparser(
             key, parser, parser.parser.add_subparsers(**kwargs)
@@ -317,7 +317,7 @@ class ParserManager:
 
         """
         if key in self.registered_parsers:
-            raise GitProjectException(f"Parser key conflict: {key}")
+            raise GitProjectError(f"Parser key conflict: {key}")
         self.registered_parsers.add(key)
         parser = self.Parser(
             key, subparser.subparser.add_parser(name, **kwargs)

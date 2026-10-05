@@ -29,7 +29,7 @@ from pathlib import Path
 import progressbar
 import pygit2
 
-from .exception import GitProjectException
+from .exception import GitProjectError
 from .shell import capture_command
 
 
@@ -42,7 +42,7 @@ class Git:
     Git() attaches to the repository that holds the current directory, found
     the way git finds it. Outside any repository it still builds: has_repo
     answers False, and each method that needs the repository raises a
-    GitProjectException that names the directory searched. reinit attaches to
+    GitProjectError that names the directory searched. reinit attaches to
     a different directory.
 
     config wraps the repository's git config as sections and items. Config
@@ -164,9 +164,7 @@ class Git:
                     """Get the single value of this key.  Raise an exception if there is more than
                     one value."""
                     if self.is_multival():
-                        raise GitProjectException(
-                            "Single value get for multival"
-                        )
+                        raise GitProjectError("Single value get for multival")
                     return next(iter(self._values))
 
                 def has_value(self, value):
@@ -423,7 +421,7 @@ class Git:
 
         def push_update_reference(self, refname, message):
             if message is not None:
-                raise GitProjectException(
+                raise GitProjectError(
                     f"Could not prune remote branch: {message}"
                 )
 
@@ -463,7 +461,7 @@ class Git:
 
     def _no_repository_error(self):
         """Return the error to raise when there is no repository."""
-        return GitProjectException(
+        return GitProjectError(
             f"No git repository at {self._search_path} or any parent"
         )
 
@@ -483,7 +481,7 @@ class Git:
     def config(self):
         """Return the config of the repository.
 
-        Raise GitProjectException when there is no repository.
+        Raise GitProjectError when there is no repository.
 
         """
         if self._repository is None or self._config is None:
@@ -895,9 +893,7 @@ class Git:
         """
         worktree = self._repo.lookup_worktree(name)
         if os.path.exists(worktree.path):
-            raise GitProjectException(
-                "Will not prune existing worktree {name}"
-            )
+            raise GitProjectError("Will not prune existing worktree {name}")
 
         # Prune the worktree. For some reason, libgit2 treats a worktree as
         # valid unless both the worktree directory and data dir under

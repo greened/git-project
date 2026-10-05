@@ -61,7 +61,7 @@ def test_git_outside_repository_reports_it(
 
     assert not git.has_repo()
 
-    with pytest.raises(git_project.GitProjectException) as exc:
+    with pytest.raises(git_project.GitProjectError) as exc:
         # A property raises on the read, a method on the call.
         result = getattr(git, accessor)
         if callable(result):
@@ -82,7 +82,7 @@ def test_git_committish_exists_outside_repository_reports_it(
     # covers, so the repository read has to stay outside.  False here would
     # say the committish is absent rather than that there is nothing to look
     # in.
-    with pytest.raises(git_project.GitProjectException) as exc:
+    with pytest.raises(git_project.GitProjectError) as exc:
         git.committish_exists("HEAD")
 
     assert str(path) in str(exc.value)
@@ -117,14 +117,14 @@ def test_git_reinit_outside_repository_detaches(
 
     assert not git.has_repo()
 
-    with pytest.raises(git_project.GitProjectException) as exc:
+    with pytest.raises(git_project.GitProjectError) as exc:
         git.is_bare_repository()
 
     assert str(path) in str(exc.value)
 
     # The config reports no repository too, rather than handing back the one
     # belonging to the repository we just left.
-    with pytest.raises(git_project.GitProjectException) as exc:
+    with pytest.raises(git_project.GitProjectError) as exc:
         _ = git.config
 
     assert str(path) in str(exc.value)
@@ -342,9 +342,7 @@ def test_git_worktree(reset_directory, local_repository):
 
     assert os.path.exists(worktree_path)
 
-    with pytest.raises(
-        git_project.GitProjectException, match="Will not prune"
-    ):
+    with pytest.raises(git_project.GitProjectError, match="Will not prune"):
         git.prune_worktree("test-wt")
 
     shutil.rmtree(worktree_checkout_path)
@@ -1055,9 +1053,7 @@ def test_git_worktree_subdir(reset_directory, local_repository):
     wtgit = git_project.Git()
     assert wtgit.get_current_branch() == "user/test-wt"
 
-    with pytest.raises(
-        git_project.GitProjectException, match="Will not prune"
-    ):
+    with pytest.raises(git_project.GitProjectError, match="Will not prune"):
         git.prune_worktree("test-wt")
 
     shutil.rmtree(worktree_checkout_path)

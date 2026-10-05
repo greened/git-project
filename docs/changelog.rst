@@ -38,6 +38,8 @@ Added
 
 Changed
 .......
+- ``GitProjectException`` is now ``GitProjectError``. The old name still
+  works as an alias, and a later release removes it.
 - The ``git_project._contributing`` module is gone. The guide to working
   on git-project is in the docs only, and its Tests section is now the
   ``git_project.test_support`` package documentation.
