@@ -30,6 +30,9 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+
+`0.0.40`_ - 2026-10-05
+----------------------
 Added
 .....
 - ``capture_command`` takes a list of arguments as well as a string.
@@ -151,6 +154,7 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.39...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.40...HEAD
+.. _0.0.40: https://github.com/greened/git-project/compare/v0.0.39...v0.0.40
 .. _0.0.39: https://github.com/greened/git-project/compare/v0.0.38...v0.0.39
 .. _0.0.38: https://github.com/greened/git-project/compare/v0.0.37...v0.0.38
