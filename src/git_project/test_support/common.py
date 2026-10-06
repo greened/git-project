@@ -92,6 +92,7 @@ class ParserManagerMock:
                     return False
                 if self_default[1] != other_default[1]:
                     return False
+            return True
 
         def __hash__(self):
             raise TypeError(f"unhashable type: '{type(self).__name__}'")

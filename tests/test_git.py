@@ -342,7 +342,10 @@ def test_git_worktree(reset_directory, local_repository):
 
     assert os.path.exists(worktree_path)
 
-    with pytest.raises(git_project.GitProjectError, match="Will not prune"):
+    with pytest.raises(
+        git_project.GitProjectError,
+        match="Will not prune existing worktree test-wt",
+    ):
         git.prune_worktree("test-wt")
 
     shutil.rmtree(worktree_checkout_path)
@@ -1053,7 +1056,10 @@ def test_git_worktree_subdir(reset_directory, local_repository):
     wtgit = git_project.Git()
     assert wtgit.get_current_branch() == "user/test-wt"
 
-    with pytest.raises(git_project.GitProjectError, match="Will not prune"):
+    with pytest.raises(
+        git_project.GitProjectError,
+        match="Will not prune existing worktree test-wt",
+    ):
         git.prune_worktree("test-wt")
 
     shutil.rmtree(worktree_checkout_path)

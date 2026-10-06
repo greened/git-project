@@ -36,6 +36,13 @@ Removed
   core-plugins 0.0.28 is the first release that uses the new name, so an
   older core-plugins fails to import with this git-project.
 
+Fixed
+.....
+- ``prune_worktree`` refused to prune a worktree with the message
+  ``Will not prune existing worktree {name}``. It now names the worktree.
+- ``ParserManagerMock.ParserMock`` compared unequal to an equal mock:
+  ``==`` returned None, and ``!=`` returned True.
+
 `0.0.40`_ - 2026-10-05
 ----------------------
 Added

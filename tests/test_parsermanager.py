@@ -21,6 +21,8 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+from git_project.test_support import ParserManagerMock
+
 
 def test_get_or_add_parser_name_and_key(reset_directory, parser_manager):
     command = parser_manager.find_subparser("command")
@@ -37,3 +39,14 @@ def test_get_or_add_parser_name_and_key(reset_directory, parser_manager):
     # The name is what the user types.
     clargs = parser_manager.parse_args(["visible"])
     assert clargs.command == "visible"
+
+
+def test_parser_mock_equality():
+    def make(help_text):
+        parser = ParserManagerMock.ParserMock("thekey")
+        parser.add_argument("name", help=help_text)
+        parser.set_defaults(func="handler")
+        return parser
+
+    assert make("same") == make("same")
+    assert make("same") != make("different")

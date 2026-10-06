@@ -893,7 +893,7 @@ class Git:
         """
         worktree = self._repo.lookup_worktree(name)
         if os.path.exists(worktree.path):
-            raise GitProjectError("Will not prune existing worktree {name}")
+            raise GitProjectError(f"Will not prune existing worktree {name}")
 
         # Prune the worktree. For some reason, libgit2 treats a worktree as
         # valid unless both the worktree directory and data dir under
