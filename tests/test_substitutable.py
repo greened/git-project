@@ -436,7 +436,9 @@ def test_substitutable_substitute_command_rebase_worktree(
     )
 
 
-def test_substitutable_substitute_fstring(reset_directory, git):
+def test_substitutable_substitute_expression_stays_literal(
+    reset_directory, git
+):
     class MyProject(git_project.ScopedConfigObject):
         def __init__(self):
             super().__init__(
@@ -457,9 +459,14 @@ def test_substitutable_substitute_fstring(reset_directory, git):
     git._repo.branches.create("imerge/user/test-fstr", commit)
 
     git.checkout("imerge/user/test-fstr")
-    current_branch = git.get_current_branch()
 
     git_project.run_command_with_shell("git rebase --exec false origin/master")
+
+    command = substitutable.substitute_value(
+        git, project, "cd {builddir}/{branch}"
+    )
+
+    assert command == "cd /path/to/build/imerge/user/test-fstr"
 
     substitutable.command = (
         'cd {builddir}/{branch.replace("imerge/", "", 1)} && make {target}'
@@ -469,9 +476,8 @@ def test_substitutable_substitute_fstring(reset_directory, git):
         git, project, substitutable.command
     )
 
-    assert (
-        command
-        == f'cd {project.builddir}/{current_branch.replace("imerge/", "", 1)} && make {project.target}'
+    assert command == (
+        'cd /path/to/build/{branch.replace("imerge/", "", 1)} && make debug'
     )
 
 
@@ -704,3 +710,104 @@ def test_substitutable_substitute_formats_not_shared(reset_directory, git):
     # The second object has no leaked item, so it cannot see the first's.
     with pytest.raises(NameError):
         second.substitute_value(git, project, "{leaked}")
+
+
+class MyTargetProject(git_project.ScopedConfigObject):
+    def __init__(self, git):
+        super().__init__(
+            git,
+            "project",
+            None,
+            "myproject",
+            builddir="/path/to/build",
+            target="debug",
+        )
+
+
+def substitute(git, string):
+    substitutable = MySubstitutable.get(git, "project", "test")
+    project = MyTargetProject(git)
+    return substitutable.substitute_value(git, project, string)
+
+
+def test_substitutable_substitute_no_code_execution(
+    reset_directory, git, tmp_path
+):
+    pwned = tmp_path / "pwned"
+    value = f'{{__import__("os").system("touch {pwned}")}}'
+
+    assert substitute(git, value) == value
+    assert not pwned.exists()
+
+
+def test_substitutable_substitute_single_quote(reset_directory, git):
+    assert substitute(git, "echo '{target}'") == "echo 'debug'"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "{target.upper()}",
+        "{target[0]}",
+        "{target.__class__}",
+        "{target!r}",
+        "{target:>8}",
+        "{1+1}",
+        "{ target }",
+    ],
+    # The fixtures put the test id in a repo path, so keep it plain.
+    ids=["call", "index", "attribute", "conversion", "spec", "sum", "spaces"],
+)
+def test_substitutable_substitute_attribute_index_spec_literal(
+    reset_directory, git, value
+):
+    assert substitute(git, value) == value
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("awk '{print $1}' {target}", "awk '{print $1}' debug"),
+        (r"find . -exec echo {} \;", r"find . -exec echo {} \;"),
+        ("a { b", "a { b"),
+        ("a } b", "a } b"),
+    ],
+    # The fixtures put the test id in a repo path, so keep it plain.
+    ids=["awk", "empty", "open", "close"],
+)
+def test_substitutable_substitute_stray_braces_literal(
+    reset_directory, git, value, expected
+):
+    assert substitute(git, value) == expected
+
+
+def test_substitutable_substitute_escaped_name_not_substituted(
+    reset_directory, git
+):
+    assert substitute(git, "{{}target{}}") == "{target}"
+
+
+def test_substitutable_substitute_doubled_braces(reset_directory, git):
+    assert substitute(git, "{{target}}") == "debug"
+
+
+def test_substitutable_substitute_sentinel_text_literal(reset_directory, git):
+    assert substitute(git, "[[[x]]] {{}y{}}") == "[[[x]]] {y}"
+
+
+def test_substitutable_substitute_two_scopes_one_pass(reset_directory, git):
+    class MyScope(git_project.ScopedConfigObject):
+        def __init__(self, subsection, ident):
+            super().__init__(git, "project", subsection, ident)
+
+    substitutable = MySubstitutable.get(git, "project", "test")
+
+    project = MyTargetProject(git)
+    project.push_scope(MyScope("worktree", "myworktree"))
+    project.push_scope(MyScope("build", "mybuild"))
+
+    command = substitutable.substitute_value(
+        git, project, "{worktree}/{build}"
+    )
+
+    assert command == "myworktree/mybuild"

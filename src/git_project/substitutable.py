@@ -40,15 +40,26 @@ The names come from four places, and a later one wins over an earlier one:
 A name that none of them define is looked up as a scope name through
 ``get_scope``, and gives that scope's ident.
 
-The string is evaluated as a Python f-string with these names as its
-globals, again and again until it stops changing. So substitution runs any
-Python expression in braces. Treat config values as code.
+Substitution replaces each ``{name}`` whose name is ASCII letters, digits and
+underscores and does not start with a digit, and repeats until the string stops
+changing. Nothing is evaluated. Other text in single braces, such as
+``{x.replace("a", "b")}``, ``{x[0]}`` or ``{}``, stays as written. A doubled
+``{{`` or ``}}`` becomes one brace on each pass. A name that no source defines
+and that names no scope raises ``NameError``.
 
 """
 
+import re
 from pathlib import Path
 
 from .configobj import ConfigObject
+
+# One alternation, scanned left to right like an f-string: a doubled
+# brace is a literal brace, and only a bare identifier is a field.
+_FIELD = re.compile(r"\{\{|\}\}|\{([A-Za-z_][A-Za-z0-9_]*)\}")
+# Git config cannot hold NUL, so a config value cannot collide with these.
+_LBRACE = "\x00("
+_RBRACE = "\x00)"
 
 
 class SubstitutableConfigObject(ConfigObject):
@@ -143,51 +154,33 @@ class SubstitutableConfigObject(ConfigObject):
                     f"Recursive substitution: {key} is in {value}"
                 )
 
-        def try_format(string, formats):
-            return eval(f"f'{string}'", formats)
-
         def add_scope(project, key, formats):
             scope = project.get_scope(key)
             if scope:
                 value = scope.get_ident()
                 formats[key] = value
 
-        # Allow escaping braces by surrounding each brace with braces.  This is
-        # not valid f-string syntax and is unlikely to be used in ordinary
-        # config values.  Replace with an equally unlikely sequence, then
-        # substitute on that string.
+        def expand(match):
+            token = match.group(0)
+            if token == "{{":
+                return "{"
+            if token == "}}":
+                return "}"
+            name = match.group(1)
+            if name not in formats:
+                add_scope(project, name, formats)
+            if name not in formats:
+                raise NameError(f"name {name!r} is not defined", name=name)
+            return str(formats[name])
 
-        escaped_braces = False
+        # Hide escaped braces on every pass, so that neither an escape in
+        # the string nor one in a substituted value is read as a field.
         while True:
-            escaped_braces = (
-                escaped_braces or "{{}" in string or "{}}" in string
-            )
-            if escaped_braces:
-                string = string.replace("{{}", "[[[")
-                string = string.replace("{}}", "]]]")
-            try:
-                newstring = try_format(string, formats)
-            except KeyError as exception:
-                # See if this is a scope name.
-                for key in exception.args:
-                    add_scope(project, key, formats)
-                # Try again after adding scopes.
-                newstring = try_format(string, formats)
-            except NameError as exception:
-                # args is simply the error  message, with the name surrounded by
-                # '.  Use .name attribute after upgrading to python 3.10.
-                for arg in exception.args:
-                    key = arg.split("'")[1]
-                    add_scope(project, key, formats)
-                # Try again after adding scopes.
-                newstring = try_format(string, formats)
-
-            changed = False if newstring == string else True
-            string = newstring
-            if not changed:
-                if escaped_braces:
-                    string = string.replace("[[[", "{")
-                    string = string.replace("]]]", "}")
+            string = string.replace("{{}", _LBRACE)
+            string = string.replace("{}}", _RBRACE)
+            newstring = _FIELD.sub(expand, string)
+            if newstring == string:
                 break
+            string = newstring
 
-        return string
+        return string.replace(_LBRACE, "{").replace(_RBRACE, "}")

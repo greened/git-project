@@ -140,14 +140,16 @@ the value of ``name``. A name can be:
     The root of the current worktree
 
 Substitution repeats until the value stops changing, so a value can name
-another value that itself contains ``{name}``. A value may not name itself.
-To write a literal brace, write ``{{}`` for ``{`` and ``{}}`` for ``}``.
+another value that itself contains ``{name}``. A value may not name itself. To
+write a literal brace, write ``{{}`` for ``{`` and ``{}}`` for ``}``. A name is
+ASCII letters, digits and underscores, and does not start with a digit. Other
+text in single braces, such as ``{x.upper()}`` or ``{}``, stays as written, but
+a doubled ``{{`` or ``}}`` becomes one brace. A name that is not defined is an
+error.
 
-**A value is evaluated as Python.** git-project substitutes a value by
-evaluating it as a Python f-string. So ``{1+1}`` becomes ``2``, and any
-Python expression in braces runs when the value is substituted. Treat the
-git config as code, and do not include config from a source you do not
-trust. A value that contains a ``'`` cannot be substituted.
+Substitution inserts each value as written, and the ``run`` plugin runs
+its commands through a shell. Treat the git config as code, and do not
+include config from a source you do not trust.
 
 Getting help
 ============

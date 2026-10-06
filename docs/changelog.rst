@@ -43,6 +43,14 @@ Fixed
 - ``ParserManagerMock.ParserMock`` compared unequal to an equal mock:
   ``==`` returned None, and ``!=`` returned True.
 
+Security
+........
+- Substitution no longer evaluates a config value as a Python f-string.
+  Before, any expression in braces ran, so a value from an included config
+  file could run code. Now only ``{name}`` is replaced, and an expression
+  such as ``{x.replace(...)}`` stays as written. A value may now contain
+  ``'``, and a backslash in a value stays as written.
+
 `0.0.40`_ - 2026-10-05
 ----------------------
 Added
