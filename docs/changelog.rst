@@ -30,6 +30,9 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+
+`0.0.42`_ - 2026-10-06
+----------------------
 Added
 .....
 - A command can set ``write_project_defaults=False`` on its parser, so that
@@ -200,7 +203,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.41...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.42...HEAD
+.. _0.0.42: https://github.com/greened/git-project/compare/v0.0.41...v0.0.42
 .. _0.0.41: https://github.com/greened/git-project/compare/v0.0.40...v0.0.41
 .. _0.0.40: https://github.com/greened/git-project/compare/v0.0.39...v0.0.40
 .. _0.0.39: https://github.com/greened/git-project/compare/v0.0.38...v0.0.39
