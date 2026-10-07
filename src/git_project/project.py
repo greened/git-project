@@ -22,6 +22,11 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 
+import sys
+
+import pygit2
+
+from .exception import GitProjectError
 from .git import Git
 from .scopedobj import ScopedConfigObject
 
@@ -204,7 +209,9 @@ class Project(ScopedConfigObject):
 
     def prune_branch(self, branch, keep_remote_branch=False):
         """Delete a branch locally and, unless keep_remote_branch is set, on any
-        remotes on which it exists.
+        remotes on which it exists. A remote that cannot be reached, or that
+        refuses the delete, gets a warning, and the local branch is deleted
+        anyway.
 
         branch: The branch to delete.
 
@@ -213,8 +220,25 @@ class Project(ScopedConfigObject):
 
         """
         if not keep_remote_branch:
+            # Raise a bad ssh.id here, so the handler below cannot report it
+            # as a remote refusal.
+            self._git.get_ssh_id()
             for remote in self.iterremotes():
-                if self._git.remote_branch_exists(branch, remote):
-                    self._git.delete_remote_branch(branch, remote)
+                # A remote failure must not stop the local delete. libgit2
+                # does not read ~/.ssh/config, so a host alias there does not
+                # resolve.
+                try:
+                    if self._git.remote_branch_exists(branch, remote):
+                        self._git.delete_remote_branch(branch, remote)
+                except pygit2.GitError:
+                    # The error may hold the URL, so it is not printed.
+                    print(
+                        f"warning: cannot reach remote {remote} to check or "
+                        f"delete {branch}",
+                        file=sys.stderr,
+                    )
+                except GitProjectError as error:
+                    # The remote refused the delete, and says why.
+                    print(f"warning: {remote}: {error}", file=sys.stderr)
         if self._git.committish_exists(branch):
             self._git.delete_branch(Git.refname_to_branch_name(branch))

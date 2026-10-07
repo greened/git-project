@@ -208,3 +208,45 @@ def test_project_branch_is_pushed_indirectly(project):
 
 def test_project_branch_is_merged_indirectly(project):
     assert project.branch_is_merged("pushed_indirectly")
+
+
+def test_project_prune_branch_unreachable_remote(
+    reset_directory, remote_repository, tmp_path_factory, capsys
+):
+    project = clone_with_pushed_branch(remote_repository, tmp_path_factory)
+    missing = tmp_path_factory.mktemp("missing") / "none.git"
+    project._git.config.set_item("remote.origin", "url", f"file://{missing}")
+
+    project.prune_branch("pushed")
+
+    assert not project._git.committish_exists("pushed")
+    assert (
+        "warning: cannot reach remote origin to check or delete pushed"
+        in capsys.readouterr().err
+    )
+
+
+def test_project_prune_branch_remote_refuses_delete(
+    reset_directory, remote_repository, tmp_path_factory, capsys, monkeypatch
+):
+    project = clone_with_pushed_branch(remote_repository, tmp_path_factory)
+
+    # libgit2's local transport ignores receive.denyDeletes, so make the push
+    # callback refuse, as it does for a server's rejection.
+    def refuse(self, refname, message):
+        raise git_project.GitProjectError(
+            "Could not prune remote branch: deletion prohibited"
+        )
+
+    monkeypatch.setattr(
+        git_project.Git.RemoteBranchDeleteCallback,
+        "push_update_reference",
+        refuse,
+    )
+
+    project.prune_branch("pushed")
+
+    assert not project._git.committish_exists("pushed")
+    assert "warning: origin: Could not prune remote branch" in (
+        capsys.readouterr().err
+    )

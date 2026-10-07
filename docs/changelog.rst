@@ -30,6 +30,13 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Fixed
+.....
+- ``branch prune``, ``worktree rm`` and ``Project.prune_branch`` stopped
+  and kept the local branch when a remote could not be reached, such as
+  one whose URL names a host alias from ``~/.ssh/config``, which libgit2
+  does not read, or when a remote refused the delete. They now warn about
+  that remote on stderr and delete the local branch.
 
 `0.0.41`_ - 2026-10-06
 ----------------------
