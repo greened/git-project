@@ -59,3 +59,67 @@ def test_main_help_shows_summary(reset_directory, git, capsys):
     out = capsys.readouterr().out
     assert "git <project> <command> [<options>]" in out
     assert "The name git-project runs under selects the active project." in out
+
+
+class _DefaultsPlugin(git_project.Plugin):
+    """Adds 'look', which may write the defaults, and 'peek', which may not."""
+
+    def __init__(self):
+        super().__init__("defaults")
+        self.branch_at_initialize = None
+
+    def initialize(self, git, gitproject, project, plugin_manager):
+        self.branch_at_initialize = project.has_item("branch")
+
+    def add_arguments(
+        self, git, gitproject, project, parser_manager, plugin_manager
+    ):
+        look = git_project.add_top_level_command(
+            parser_manager, "look", "look"
+        )
+        look.set_defaults(func=lambda *args: 0)
+        peek = git_project.add_top_level_command(
+            parser_manager, "peek", "peek"
+        )
+        peek.set_defaults(func=lambda *args: 0, write_project_defaults=False)
+
+
+@pytest.fixture
+def defaults_plugin(monkeypatch):
+    plugin = _DefaultsPlugin()
+
+    def load_plugins(self, git, project):
+        self.plugins.append(plugin)
+
+    monkeypatch.setattr(
+        git_project.PluginManager, "load_plugins", load_plugins
+    )
+    monkeypatch.setattr("sys.argv", ["git-project"])
+    return plugin
+
+
+@pytest.mark.parametrize("command, written", [("look", True), ("peek", False)])
+def test_main_project_defaults(
+    reset_directory, git, defaults_plugin, command, written
+):
+    assert not git.config.has_item("project", "branch")
+    assert not git.config.has_item("project", "remote")
+
+    git_project.main_impl([command])
+
+    config = git_project.Git().config
+    assert config.has_item("project", "branch") == written
+    assert config.has_item("project", "remote") == written
+    if written:
+        assert config.get_item("project", "branch") == "master"
+        assert config.get_item("project", "remote") == "origin"
+
+
+def test_main_project_defaults_before_initialize(
+    reset_directory, git, defaults_plugin
+):
+    assert not git.config.has_item("project", "branch")
+
+    git_project.main_impl(["look"])
+
+    assert defaults_plugin.branch_at_initialize is True

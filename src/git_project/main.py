@@ -30,12 +30,15 @@ does the work, in this order:
    file for repeated entries.
 #. Take the active project's name from the program name, with any ``git-``
    prefix removed.
-#. Build the active Project.
+#. Build the active Project, without its defaults.
 #. Load the plugins and call each one's ``add_class_hooks``, which receives
    the project.
 #. Build the GitProject, now that the class hooks are in place.
 #. Parse the command line. Every plugin's ``add_arguments`` runs, then every
    plugin's ``modify_arguments``. See git_project.commandline.
+#. Write the project's missing defaults, branch and remote, unless the
+   chosen command set ``write_project_defaults`` to False. See
+   Project.set_defaults.
 #. Call each plugin's ``initialize``.
 #. Call the chosen command's ``func(git, gitproject, project, clargs)``.
 #. Check the config file again, and return what ``func`` returned.
@@ -70,7 +73,8 @@ def main_impl(args=None):
 
     plugin_manager = git_project.PluginManager()
 
-    project = git_project.Project.get(git, project_name)
+    # Only the parsed command knows whether it may write the config.
+    project = git_project.Project.get(git, project_name, set_defaults=False)
 
     plugin_manager.load_plugins(git, project)
 
@@ -80,6 +84,10 @@ def main_impl(args=None):
     clargs = git_project.parse_arguments(
         git, gp, project, plugin_manager, args
     )
+
+    # Before initialize, which may read them.
+    if getattr(clargs, "write_project_defaults", True):
+        project.set_defaults()
 
     plugin_manager.initialize_plugins(git, gp, project)
 

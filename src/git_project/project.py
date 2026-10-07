@@ -43,8 +43,8 @@ class Project(ScopedConfigObject):
     it, so reading a project attribute gives the value from the topmost scope
     that has it. See git_project.scopedobj.
 
-    Building a project sets the defaults branch and remote when they are
-    missing. See set_defaults.
+    get sets the default branch and remote when they are missing, unless
+    set_defaults is False. See set_defaults.
 
     """
 
@@ -65,10 +65,8 @@ class Project(ScopedConfigObject):
         """
         super().__init__(git, section, subsection, ident, **kwargs)
 
-        self.set_defaults()
-
     @classmethod
-    def get(cls, git, section, **kwargs):
+    def get(cls, git, section, set_defaults=True, **kwargs):
         """A factory to construct the active project from its git config.
 
         cls: The derived class being constructed.
@@ -78,10 +76,14 @@ class Project(ScopedConfigObject):
         section: The project name. It is mapped to a git config section name, so
         '.' and '_' become '-'.
 
+        set_defaults: Whether to call set_defaults, which may write the config.
+
         kwargs: Keyword arguments of property values to set upon construction.
 
         """
         project = super().get(git, section, None, None, **kwargs)
+        if set_defaults:
+            project.set_defaults()
         return project
 
     def set_defaults(self):

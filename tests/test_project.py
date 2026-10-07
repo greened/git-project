@@ -250,3 +250,12 @@ def test_project_prune_branch_remote_refuses_delete(
     assert "warning: origin: Could not prune remote branch" in (
         capsys.readouterr().err
     )
+
+
+def test_project_get_without_defaults(git):
+    project = git_project.Project.get(git, "project", set_defaults=False)
+
+    assert not project.has_item("remote")
+    assert not project.has_item("branch")
+    assert not git.config.has_item("project", "remote")
+    assert not git.config.has_item("project", "branch")

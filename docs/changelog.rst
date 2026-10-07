@@ -30,6 +30,22 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Added
+.....
+- A command can set ``write_project_defaults=False`` on its parser, so that
+  git-project does not write the project's default ``branch`` and
+  ``remote`` to the config. A dry run can then leave the config as it was.
+- ``Project.get`` takes ``set_defaults``, True by default. With False, it
+  does not write the defaults.
+
+Changed
+.......
+- git-project writes the project defaults after the command line is
+  parsed, not when it builds the project. So ``-h``, ``--version``,
+  ``--menu`` and a command-line error no longer write them. The plugin
+  hooks ``add_class_hooks``, ``add_arguments`` and ``modify_arguments``
+  can see a project without its default branch and remote.
+
 Fixed
 .....
 - ``branch prune``, ``worktree rm`` and ``Project.prune_branch`` stopped

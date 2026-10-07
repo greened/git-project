@@ -81,7 +81,9 @@ plugin before the next hook:
    this hook.
 #. ``add_arguments``. Add commands and options.
 #. ``modify_arguments``. Change what other plugins added.
-#. The command line is parsed.
+#. The command line is parsed, and the project's missing defaults are
+   written unless the command opts out (see Commands). Until then, a
+   project read can miss its default branch and remote.
 #. ``initialize``. Set up state, such as pushing a scope.
 #. The chosen command's function runs.
 
@@ -101,6 +103,15 @@ unique across all plugins. A command's function is set with
 GitProject for the repository, project is the active Project and clargs is
 the parsed command line. An int return is the exit status. Any other return
 exits with 0.
+
+Before a command runs, git-project writes the project's ``branch`` and
+``remote`` to the config when they are unset. A command that must not
+write the config, such as a dry run, opts out::
+
+  parser.set_defaults(write_project_defaults=False)
+
+The command then sees no default branch or remote unless the config has
+one.
 
 A plugin extends another plugin's command in ``modify_arguments``. Find its
 parser by key with ``parser_manager.find_parser(key)``, add options to it,
