@@ -30,6 +30,9 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+
+`0.0.43`_ - 2026-10-07
+----------------------
 Changed
 .......
 - ``Git.remote_branch_exists`` and ``Git.delete_remote_branch`` run the
@@ -221,7 +224,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.42...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.43...HEAD
+.. _0.0.43: https://github.com/greened/git-project/compare/v0.0.42...v0.0.43
 .. _0.0.42: https://github.com/greened/git-project/compare/v0.0.41...v0.0.42
 .. _0.0.41: https://github.com/greened/git-project/compare/v0.0.40...v0.0.41
 .. _0.0.40: https://github.com/greened/git-project/compare/v0.0.39...v0.0.40
