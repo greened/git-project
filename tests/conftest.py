@@ -21,6 +21,8 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import pytest
+
 from git_project.test_support import (
     bare_git,
     git,
@@ -49,3 +51,11 @@ __all__ = [
     "remote_repository",
     "reset_directory",
 ]
+
+
+@pytest.fixture(autouse=True)
+def no_user_git_config(monkeypatch):
+    # A remote delete runs git push, which would run the user's global
+    # pre-push hook.
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")

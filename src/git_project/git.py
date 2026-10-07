@@ -21,8 +21,12 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import contextlib
 import os
 import re
+import shlex
+import signal
+import subprocess
 import urllib.parse
 from pathlib import Path
 
@@ -52,6 +56,12 @@ class Git:
     names a keypair, ~/.ssh/<id> and ~/.ssh/<id>.pub. The key must have no
     passphrase, because git-project offers no passphrase and does not ask an
     ssh agent. Without ssh.id no keypair is offered.
+
+    remote_branch_exists and delete_remote_branch run the git CLI instead,
+    so they read ~/.ssh/config and use the ssh agent. With ssh.id set they
+    pass ~/.ssh/<id> to ssh as well. That replaces any core.sshCommand in
+    the git config. A GIT_SSH_COMMAND in the environment takes precedence,
+    and then ssh.id has no effect.
 
     """
 
@@ -407,32 +417,6 @@ class Git:
 
             if section.is_empty():
                 del self._sections[section_name]
-
-    class RemoteBranchDeleteCallback(pygit2.RemoteCallbacks):
-        def __init__(self, ssh_id: str | None):
-            self.ssh_id = ssh_id
-
-        """Check the result of remove branch prune operations."""
-
-        def credentials(self, url, username_from_url, allowed_types):
-            return Git._ssh_credentials(
-                self.ssh_id, username_from_url, allowed_types
-            )
-
-        def push_update_reference(self, refname, message):
-            if message is not None:
-                raise GitProjectError(
-                    f"Could not prune remote branch: {message}"
-                )
-
-    class LsRemotesCallbacks(pygit2.RemoteCallbacks):
-        def __init__(self, ssh_id: str | None):
-            self.ssh_id = ssh_id
-
-        def credentials(self, url, username_from_url, allowed_types):
-            return Git._ssh_credentials(
-                self.ssh_id, username_from_url, allowed_types
-            )
 
     # Repository-wide info
     def __init__(self):
@@ -921,28 +905,109 @@ class Git:
         branch_name = self.refname_to_branch_name(branch_name)
         self._repo.branches.delete(branch_name)
 
+    # A remote call through the git CLI gives up after this many seconds.
+    REMOTE_TIMEOUT = 60
+
+    def _run_remote_git(self, args):
+        """Run the git CLI with args on this repository and return the
+        CompletedProcess, or None if git could not run or timed out.
+
+        """
+        command = ["git"]
+        ssh_id = self.get_ssh_id()
+        if ssh_id:
+            # git runs core.sshCommand through a shell.
+            key = shlex.quote(str(Path.home() / ".ssh" / ssh_id))
+            command += ["-c", f"core.sshCommand=ssh -i {key}"]
+        command += ["--git-dir", self._repo.path, *args]
+        # Fail rather than prompt for credentials. An empty GIT_ASKPASS
+        # stops git from running an askpass program, and a new session has
+        # no terminal for ssh to prompt on.
+        env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="")
+        env["SSH_ASKPASS_REQUIRE"] = "never"
+        # --git-dir makes the cwd the top of the work tree, and a pre-push
+        # hook runs there.
+        cwd = self._repo.workdir or self._repo.path
+        try:
+            proc = subprocess.Popen(
+                command,
+                cwd=cwd,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                # Nothing reads it, and it may hold the URL.
+                stderr=subprocess.DEVNULL,
+                text=True,
+                # A hook or the remote may write any bytes.
+                errors="replace",
+                start_new_session=True,
+            )
+        except OSError:
+            return None
+        try:
+            out, _ = proc.communicate(timeout=self.REMOTE_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            # Kill ssh as well as git.
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGKILL)
+            # A child that left the group may still hold the pipe, so do not
+            # read it to the end.
+            proc.stdout.close()
+            proc.wait()
+            return None
+        return subprocess.CompletedProcess(command, proc.returncode, out)
+
     def remote_branch_exists(self, branch_name, remote):
-        """Return whether the given branch exists on the given remote."""
+        """Return whether the given branch exists on the given remote. Raise
+        GitProjectError if the remote cannot be reached.
+
+        """
         refname = self.branch_name_to_refname(branch_name)
         # FIXME: There is no way to get the branch's name on the remote side,
         # so assume it matches the local name.
-        for item in self._repo.remotes[remote].list_heads(
-            callbacks=Git.LsRemotesCallbacks(self.get_ssh_id())
-        ):
-            if not item.local and item.name == refname:
+        result = self._run_remote_git(
+            ["ls-remote", "--exit-code", "--", remote, refname]
+        )
+        # ls-remote exits with 2 when no ref matches.
+        if result is None or result.returncode not in (0, 2):
+            raise GitProjectError(
+                f"cannot reach remote {remote} to check {branch_name}"
+            )
+        # A pattern matches any ref that ends with it, so check the name.
+        for line in result.stdout.splitlines():
+            if line.partition("\t")[2] == refname:
                 return True
         return False
 
     def delete_remote_branch(self, branch_name, remote):
-        """Remove the given local branch from the given remote."""
-        # FIXME: What if the remote branch is not in refs/heads?  For some
-        # reason push :branch_name doesn't work.  push
-        # :remotes/<remote>/branch_name also doesn't work.
+        """Remove the given local branch from the given remote. Raise
+        GitProjectError if the remote cannot be reached or refuses.
+
+        """
+        # FIXME: What if the remote branch is not in refs/heads?
         refname = self.branch_name_to_refname(branch_name)
-        callback = self.RemoteBranchDeleteCallback(self.get_ssh_id())
-        refspecs = [f":{refname}"]
-        remote = self._repo.remotes[remote]
-        remote.push(refspecs, callback)
+        result = self._run_remote_git(
+            ["push", "--porcelain", "--delete", "--", remote, refname]
+        )
+        if result is not None and result.returncode == 0:
+            return
+        # Each porcelain ref line is flag, refspec and summary, separated by
+        # tabs. The summary gives the reason, and the line holds no URL.
+        reason = ""
+        if result is not None:
+            for line in result.stdout.splitlines():
+                fields = line.split("\t")
+                if len(fields) == 3 and fields[1] == f":{refname}":
+                    # The remote may write the reason, so drop control
+                    # characters.
+                    reason = "".join(c for c in fields[2] if c.isprintable())
+        if reason:
+            raise GitProjectError(
+                f"remote {remote} refused to delete {branch_name}: {reason}"
+            )
+        raise GitProjectError(
+            f"cannot delete {branch_name} on remote {remote}"
+        )
 
     def validate_config(self):
         """Ensure the git config is sane.  This is primarily a development debugging

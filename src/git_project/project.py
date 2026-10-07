@@ -24,8 +24,6 @@
 
 import sys
 
-import pygit2
-
 from .exception import GitProjectError
 from .git import Git
 from .scopedobj import ScopedConfigObject
@@ -226,21 +224,11 @@ class Project(ScopedConfigObject):
             # as a remote refusal.
             self._git.get_ssh_id()
             for remote in self.iterremotes():
-                # A remote failure must not stop the local delete. libgit2
-                # does not read ~/.ssh/config, so a host alias there does not
-                # resolve.
+                # A remote failure must not stop the local delete.
                 try:
                     if self._git.remote_branch_exists(branch, remote):
                         self._git.delete_remote_branch(branch, remote)
-                except pygit2.GitError:
-                    # The error may hold the URL, so it is not printed.
-                    print(
-                        f"warning: cannot reach remote {remote} to check or "
-                        f"delete {branch}",
-                        file=sys.stderr,
-                    )
                 except GitProjectError as error:
-                    # The remote refused the delete, and says why.
-                    print(f"warning: {remote}: {error}", file=sys.stderr)
+                    print(f"warning: {error}", file=sys.stderr)
         if self._git.committish_exists(branch):
             self._git.delete_branch(Git.refname_to_branch_name(branch))

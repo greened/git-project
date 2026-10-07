@@ -22,8 +22,11 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import os
+import shlex
 import shutil
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pygit2
@@ -814,6 +817,103 @@ def test_git_remote_branch_exists(reset_directory, local_repository):
     assert not git.remote_branch_exists("unmerged", "origin")
 
 
+def test_git_remote_branch_exists_timeout(
+    reset_directory, local_repository, monkeypatch
+):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+    git.config.set_item("remote.origin", "url", "ssh://example.invalid/x")
+    pidfile = Path.cwd() / "ssh.pid"
+    ssh = Path.cwd() / "slow-ssh"
+    ssh.write_text(f"#!/bin/sh\necho $$ > {pidfile}\nexec sleep 30\n")
+    ssh.chmod(0o755)
+    monkeypatch.setenv("GIT_SSH_COMMAND", str(ssh))
+    monkeypatch.setattr(git_project.Git, "REMOTE_TIMEOUT", 3)
+
+    with pytest.raises(git_project.GitProjectError, match="cannot reach"):
+        git.remote_branch_exists("pushed", "origin")
+
+    # The kill reaches ssh, not only git.
+    pid = int(pidfile.read_text())
+    for _ in range(50):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.1)
+    else:
+        pytest.fail("ssh outlived the timeout")
+
+
+def test_git_delete_remote_branch_timeout_escaped_child(
+    reset_directory, local_repository, monkeypatch
+):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+    git.create_branch("todelete", "HEAD")
+    # The hook leaves a child in a new session, out of reach of the kill,
+    # and the child holds the stdout pipe open.
+    escape = "import os, time; os.setsid(); time.sleep(20)"
+    hook = Path(git._repo.path) / "hooks" / "pre-push"
+    hook.parent.mkdir(exist_ok=True)
+    hook.write_text(
+        f"#!/bin/sh\n{shlex.quote(sys.executable)} -c '{escape}' &\n"
+        "sleep 20\n"
+    )
+    hook.chmod(0o755)
+    monkeypatch.setattr(git_project.Git, "REMOTE_TIMEOUT", 1)
+
+    start = time.monotonic()
+    with pytest.raises(git_project.GitProjectError, match="cannot delete"):
+        git.delete_remote_branch("todelete", "origin")
+    assert time.monotonic() - start < 10
+
+
+def test_git_remote_branch_exists_no_git(
+    reset_directory, local_repository, monkeypatch, tmp_path_factory
+):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+    monkeypatch.setenv("PATH", str(tmp_path_factory.mktemp("empty-path")))
+
+    with pytest.raises(git_project.GitProjectError, match="cannot reach"):
+        git.remote_branch_exists("pushed", "origin")
+
+
+def test_git_remote_git_passes_ssh_id(
+    reset_directory, local_repository, monkeypatch
+):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+    git.config.set_item("ssh", "id", "my key")
+
+    commands = []
+
+    class Recorder:
+        def __init__(self, command, **kwargs):
+            commands.append(command)
+            self.returncode = 2
+
+        def communicate(self, timeout=None):
+            return "", ""
+
+    monkeypatch.setattr(subprocess, "Popen", Recorder)
+
+    assert not git.remote_branch_exists("pushed", "origin")
+    assert commands[0][1] == "-c"
+    name, _, value = commands[0][2].partition("=")
+    assert name == "core.sshCommand"
+    assert shlex.split(value) == [
+        "ssh",
+        "-i",
+        str(Path.home() / ".ssh" / "my key"),
+    ]
+
+
 def test_git_delete_remote_refname(
     reset_directory, local_repository, remote_repository
 ):
@@ -1168,52 +1268,6 @@ def test_git_remote_credentials(reset_directory):
     assert isinstance(name_result, pygit2.Username)
 
     no_id = git_project.Git.RemoteCallbacks(ssh_id=None)
-
-    assert (
-        no_id.credentials(
-            "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.SSH_KEY
-        )
-        is None
-    )
-
-
-def test_git_remote_branch_delete_credentials(reset_directory):
-    callback = git_project.Git.RemoteBranchDeleteCallback(ssh_id="id_rsa")
-
-    key_result = callback.credentials(
-        "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.SSH_KEY
-    )
-    name_result = callback.credentials(
-        "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.USERNAME
-    )
-
-    assert isinstance(key_result, pygit2.Keypair)
-    assert isinstance(name_result, pygit2.Username)
-
-    no_id = git_project.Git.RemoteBranchDeleteCallback(ssh_id=None)
-
-    assert (
-        no_id.credentials(
-            "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.SSH_KEY
-        )
-        is None
-    )
-
-
-def test_git_ls_remotes_credentials(reset_directory):
-    callback = git_project.Git.LsRemotesCallbacks(ssh_id="id_rsa")
-
-    key_result = callback.credentials(
-        "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.SSH_KEY
-    )
-    name_result = callback.credentials(
-        "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.USERNAME
-    )
-
-    assert isinstance(key_result, pygit2.Keypair)
-    assert isinstance(name_result, pygit2.Username)
-
-    no_id = git_project.Git.LsRemotesCallbacks(ssh_id=None)
 
     assert (
         no_id.credentials(

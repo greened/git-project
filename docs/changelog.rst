@@ -30,6 +30,24 @@ ChangeLog
 =========
 `Unreleased`_
 -------------
+Changed
+.......
+- ``Git.remote_branch_exists`` and ``Git.delete_remote_branch`` run the
+  git CLI instead of libgit2. They read ``~/.ssh/config`` and use the ssh
+  agent, and a delete runs the ``pre-push`` hook. With ``ssh.id`` set they
+  also pass ``~/.ssh/<id>`` to ssh. They raise ``GitProjectError``, not
+  ``pygit2.GitError``, when the remote cannot be reached or refuses.
+
+Removed
+.......
+- ``Git.LsRemotesCallbacks`` and ``Git.RemoteBranchDeleteCallback`` are
+  gone, because no git-project method uses them.
+
+Fixed
+.....
+- ``branch prune``, ``worktree rm`` and ``Project.prune_branch`` now
+  delete the remote branch on a remote whose URL names a host alias from
+  ``~/.ssh/config``.
 
 `0.0.42`_ - 2026-10-06
 ----------------------

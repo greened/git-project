@@ -220,36 +220,56 @@ def test_project_prune_branch_unreachable_remote(
     project.prune_branch("pushed")
 
     assert not project._git.committish_exists("pushed")
-    assert (
-        "warning: cannot reach remote origin to check or delete pushed"
-        in capsys.readouterr().err
-    )
+    err = capsys.readouterr().err
+    assert "warning: cannot reach remote origin to check pushed" in err
+    assert str(missing) not in err
 
 
 def test_project_prune_branch_remote_refuses_delete(
-    reset_directory, remote_repository, tmp_path_factory, capsys, monkeypatch
+    reset_directory, remote_repository, tmp_path_factory, capsys
 ):
     project = clone_with_pushed_branch(remote_repository, tmp_path_factory)
-
-    # libgit2's local transport ignores receive.denyDeletes, so make the push
-    # callback refuse, as it does for a server's rejection.
-    def refuse(self, refname, message):
-        raise git_project.GitProjectError(
-            "Could not prune remote branch: deletion prohibited"
-        )
-
-    monkeypatch.setattr(
-        git_project.Git.RemoteBranchDeleteCallback,
-        "push_update_reference",
-        refuse,
+    url = project._git.config.get_item("remote.origin", "url")
+    git_project.capture_command(
+        ["git", "--git-dir", url, "config", "receive.denyDeletes", "true"]
     )
 
     project.prune_branch("pushed")
 
     assert not project._git.committish_exists("pushed")
-    assert "warning: origin: Could not prune remote branch" in (
-        capsys.readouterr().err
-    )
+    assert project._git.remote_branch_exists("pushed", "origin")
+    err = capsys.readouterr().err
+    assert (
+        "warning: remote origin refused to delete pushed: "
+        "[remote rejected] (deletion prohibited)"
+    ) in err
+    assert url not in err
+
+
+def test_project_prune_branch_pre_push_hook_refuses(
+    reset_directory, remote_repository, tmp_path_factory, capsys
+):
+    project = clone_with_pushed_branch(remote_repository, tmp_path_factory)
+    url = project._git.config.get_item("remote.origin", "url")
+    hook = Path(project._git._repo.path) / "hooks" / "pre-push"
+    hook.parent.mkdir(exist_ok=True)
+    # Undecodable output must not stop the prune.
+    hook.write_text("#!/bin/sh\npwd > hook-cwd\nprintf '\\377\\376'\nexit 1\n")
+    hook.chmod(0o755)
+    subdir = Path(project._git._repo.workdir) / "sub"
+    subdir.mkdir()
+    os.chdir(subdir)
+
+    project.prune_branch("pushed")
+
+    assert not project._git.committish_exists("pushed")
+    assert project._git.remote_branch_exists("pushed", "origin")
+    err = capsys.readouterr().err
+    assert "warning: cannot delete pushed on remote origin" in err
+    assert url not in err
+    # The hook runs at the top of the work tree, not in the cwd.
+    workdir = Path(project._git._repo.workdir)
+    assert (workdir / "hook-cwd").read_text().strip() == str(workdir)
 
 
 def test_project_get_without_defaults(git):
