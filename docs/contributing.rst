@@ -103,11 +103,20 @@ Check the PyPI description with ``twine check`` on a built wheel.
 Changelog
 ---------
 
-Record each change a user can see in ``docs/changelog.rst``, under
-``Unreleased``, in an ``Added``, ``Changed`` or ``Fixed`` section. Describe
+A branch with a change a user can see adds a fragment to ``changelog.d``,
+named ``<slug>.<category>.rst``. The slug is lower case letters, digits
+and hyphens. The branch name makes a good one, lower-cased with ``/`` and
+``_`` turned into ``-``. A second fragment takes a suffix such as
+``-2``. The category is ``added``, ``changed``, ``deprecated``,
+``removed``, ``fixed`` or ``security``. A branch never edits
+``docs/changelog.rst``.
+
+Each fragment is one entry in plain RST, with no Sphinx roles, because
+the PyPI description shows the newest release's section. Put code in
+double backticks and write a link inline, as ```text <URL>`__``. Describe
 what changed for someone using the last release, not what changed in the
-tree. A defect that no release ever had needs no entry. The PyPI description
-shows the newest release's section.
+tree. Line breaks are kept, and an entry may have several paragraphs. A
+defect that no release ever had needs no fragment.
 
 Releasing
 ---------
@@ -116,9 +125,11 @@ A release is a tag on the main branch, named ``vX.Y.Z``. Tags are
 lightweight. hatch-vcs takes the version from the tag, so there is no
 version number to edit.
 
-#. Rename ``Unreleased`` to the new version, dated the day of the release,
-   and start a new empty ``Unreleased`` section. Add its link targets at the
-   end of the changelog. Commit the change on the main branch and push it.
+#. Run ``./changelog.py --version X.Y.Z``. It moves the fragments into a
+   new section of the changelog, dated today, and stages their removal.
+   With ``--stdout`` it prints the section and changes nothing.
+#. Edit and review the result. Commit the changelog with the removed
+   fragments and push that commit to the main branch.
 #. Tag that commit.
 #. Build from a clean checkout of the tagged commit, such as a new
    worktree, with ``hatch build``. An untracked file in the checkout ends up
@@ -128,6 +139,9 @@ version number to edit.
 #. Run ``twine check`` on the built files, then upload them with ``twine
    upload``. A version number can never be uploaded twice.
 #. Push the tag last, so a failed upload leaves no published tag behind.
+
+``changelog.py`` refuses, and changes nothing, when a fragment or the
+changelog would give a wrong section. Its docstring lists every case.
 
 git-project-core-plugins declares its floor on git-project in its
 ``requirements.txt``. When core-plugins needs something new in git-project,
