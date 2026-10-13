@@ -21,6 +21,10 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import json
+
+import pytest
+
 from git_project.test_support import ParserManagerMock
 
 
@@ -39,6 +43,120 @@ def test_get_or_add_parser_name_and_key(reset_directory, parser_manager):
     # The name is what the user types.
     clargs = parser_manager.parse_args(["visible"])
     assert clargs.command == "visible"
+
+
+def run_menu(parser_manager, capsys, args):
+    with pytest.raises(SystemExit) as exit_info:
+        parser_manager.parse_args(args)
+    assert exit_info.value.code == 0
+    return capsys.readouterr().out
+
+
+def add_menu_entries(parser_manager):
+    command = parser_manager.find_subparser("command")
+    parser_manager.add_parser(
+        command,
+        "multirepo",
+        "multirepo",
+        aliases=["mr", "multi"],
+        help="Run commands across repositories",
+    )
+    parser_manager.add_parser(command, "plain", "plain", help="No aliases")
+    main = parser_manager.find_parser("__main__")
+    main.add_argument("target", help="The target")
+    main.add_argument("where", nargs="?", help="Maybe a place")
+    main.add_argument("mode", choices=["fast", "slow"], help="A mode")
+    main.add_argument("--force", "-f", action="store_true", help="Force it")
+    main.add_argument("--pair", nargs=2, help="Two values")
+
+
+def test_menu_json(reset_directory, parser_manager, capsys):
+    add_menu_entries(parser_manager)
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json"]))
+
+    assert menu == {
+        "version": 1,
+        "commands": [
+            {
+                "name": "multirepo",
+                "aliases": ["mr", "multi"],
+                "description": "Run commands across repositories",
+            },
+            {"name": "plain", "aliases": [], "description": "No aliases"},
+        ],
+        "positionals": [
+            {
+                "name": "target",
+                "nargs": None,
+                "choices": None,
+                "description": "The target",
+            },
+            {
+                "name": "where",
+                "nargs": "?",
+                "choices": None,
+                "description": "Maybe a place",
+            },
+            {
+                "name": "mode",
+                "nargs": None,
+                "choices": ["fast", "slow"],
+                "description": "A mode",
+            },
+        ],
+        "optionals": [
+            {
+                "name": "--force",
+                "aliases": ["-f"],
+                "has_value": False,
+                "nargs": None,
+                "choices": None,
+                "description": "Force it",
+            },
+            {
+                "name": "--pair",
+                "aliases": [],
+                "has_value": True,
+                "nargs": "2",
+                "choices": None,
+                "description": "Two values",
+            },
+        ],
+    }
+
+
+def test_menu_json_separate_value(reset_directory, parser_manager, capsys):
+    add_menu_entries(parser_manager)
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu", "json"]))
+
+    assert menu["version"] == 1
+    assert menu["commands"][0]["aliases"] == ["mr", "multi"]
+
+
+@pytest.mark.parametrize("args", [["--menu"], ["--menu=text"]])
+def test_menu_text_unchanged(reset_directory, parser_manager, capsys, args):
+    add_menu_entries(parser_manager)
+
+    assert run_menu(parser_manager, capsys, args) == (
+        "COMMANDS:\n"
+        "multirepo:Run commands across repositories\n"
+        "plain:No aliases\n"
+        "POSITIONALS:\n"
+        "target:The target\n"
+        "where:Maybe a place\n"
+        "mode:A mode\n"
+        "OPTIONALS:\n"
+        "--force:-f:False:Force it\n"
+        "--pair::True:Two values\n"
+    )
+
+
+def test_menu_rejects_other_values(reset_directory, parser_manager):
+    with pytest.raises(SystemExit) as exit_info:
+        parser_manager.parse_args(["--menu", "worktree"])
+    assert exit_info.value.code == 2
 
 
 def test_parser_mock_equality():

@@ -161,7 +161,10 @@ core plugins installed ``git <project> help <command>`` shows a command's
 full manual.
 
 ``--menu`` lists a command's subcommands, arguments and options in a form meant
-for tools.
+for tools. ``--menu=json`` prints them as one JSON object and adds each
+subcommand's aliases and each argument's ``nargs`` and ``choices``. The
+``version`` field changes only when a key is removed or changes meaning, so a
+reader should ignore keys it does not know.
 
 License
 =======

@@ -22,6 +22,7 @@
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
 import argparse
+import json
 import sys
 from typing import Any, ClassVar
 
@@ -92,11 +93,23 @@ class ParserManager:
                 return None
 
         class Argument:
-            def __init__(self, name, aliases, has_value, desc):
+            def __init__(
+                self, name, aliases, has_value, desc, nargs=None, choices=None
+            ):
                 self.name = name
                 self.aliases = aliases
                 self.has_value = has_value
                 self.description = desc
+                self.nargs = nargs
+                self.choices = choices
+
+            def menu_nargs(self):
+                return None if self.nargs is None else str(self.nargs)
+
+            def menu_choices(self):
+                if self.choices is None:
+                    return None
+                return list(map(str, self.choices))
 
         def __init__(self, key, parser):
             """Parser constructor.
@@ -125,6 +138,41 @@ class ParserManager:
 
             def call(self, parser, namespace, values, option_string=None):
                 parser = self.parser
+                if values == "json":
+                    menu = {
+                        "version": 1,
+                        "commands": [
+                            {
+                                "name": command.name,
+                                "aliases": list(command.aliases),
+                                "description": command.description,
+                            }
+                            for command in parser.command_arguments
+                        ],
+                        "positionals": [
+                            {
+                                "name": positional.name,
+                                "nargs": positional.menu_nargs(),
+                                "choices": positional.menu_choices(),
+                                "description": positional.description,
+                            }
+                            for positional in parser.positional_arguments
+                        ],
+                        "optionals": [
+                            {
+                                "name": optional.name,
+                                "aliases": list(optional.aliases),
+                                "has_value": optional.has_value,
+                                "nargs": optional.menu_nargs(),
+                                "choices": optional.menu_choices(),
+                                "description": optional.description,
+                            }
+                            for optional in parser.optional_arguments
+                        ],
+                    }
+                    print(json.dumps(menu))
+                    sys.exit(0)
+
                 print("COMMANDS:")
                 for command in parser.command_arguments:
                     print(f"{command.name}:{command.description}")
@@ -149,8 +197,10 @@ class ParserManager:
             parser.add_argument(
                 "--menu",
                 nargs="?",
+                const="text",
+                choices=["text", "json"],
                 action=action_class,
-                help="Dump machine-readable help",
+                help="Print the menu for tools, as text (the default) or JSON",
             )
 
         def _add_subparser(self, subparser):
@@ -213,6 +263,8 @@ class ParserManager:
                         aliases=args,
                         has_value=has_value,
                         desc=kwargs.get("help", ""),
+                        nargs=kwargs.get("nargs"),
+                        choices=kwargs.get("choices"),
                     )
                 )
             else:
@@ -222,6 +274,8 @@ class ParserManager:
                         aliases=args,
                         has_value="nargs" in kwargs,
                         desc=kwargs.get("help", ""),
+                        nargs=kwargs.get("nargs"),
+                        choices=kwargs.get("choices"),
                     )
                 )
 
@@ -326,7 +380,10 @@ class ParserManager:
         # Note that we're adding a command argument to the parent parser.
         subparser.parent_parser.command_arguments.append(
             ParserManager.Parser.Argument(
-                name, aliases=[], has_value=False, desc=kwargs.get("help", "")
+                name,
+                aliases=list(kwargs.get("aliases", [])),
+                has_value=False,
+                desc=kwargs.get("help", ""),
             )
         )
 
