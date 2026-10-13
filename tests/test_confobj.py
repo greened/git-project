@@ -55,8 +55,7 @@ def check_lines(section, key, value, section_present=True, key_present=True):
                         return True
             elif key:
                 if line.strip() == f"{key} = {value}":
-                    if key_present:
-                        return True
+                    return key_present
 
         # Didn't find the section or found the section but not the key.
 
