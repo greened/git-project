@@ -31,6 +31,35 @@ ChangeLog
 `Unreleased`_
 -------------
 
+`0.0.44`_ - 2026-10-13
+----------------------
+Added
+.....
+- ``--menu=json`` prints the menu as one JSON object with a ``version`` field.
+  Unlike the text form, it lists each subcommand's aliases and each argument's
+  ``nargs`` and ``choices``.
+
+Changed
+.......
+- ``--menu`` takes only ``text`` or ``json``. A command name after it is now an
+  error, where it used to be ignored. Put ``--menu`` after the command, as in
+  ``git <project> worktree --menu``.
+
+Fixed
+.....
+- Loading a config object no longer writes the values it loaded into the
+  repository's local config. Every command loads the project this way, so a
+  single-valued key set in the project's section of the global or system config
+  was copied into the local config on each run, even by a command that changes
+  nothing. Removing a key that has no value in the local config no longer fails.
+  Any value it has in another config file, such as the global or system config,
+  stays in place.
+- ``--menu`` now reports whether an option takes a value from the action
+  argparse builds for it. An option added with ``action="append"``,
+  ``action="extend"`` or a custom action class and no ``nargs`` was listed
+  as taking no value, and one with a custom action and ``nargs=0`` as taking
+  one.
+
 `0.0.43`_ - 2026-10-07
 ----------------------
 Changed
@@ -224,7 +253,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.43...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.44...HEAD
+.. _0.0.44: https://github.com/greened/git-project/compare/v0.0.43...v0.0.44
 .. _0.0.43: https://github.com/greened/git-project/compare/v0.0.42...v0.0.43
 .. _0.0.42: https://github.com/greened/git-project/compare/v0.0.41...v0.0.42
 .. _0.0.41: https://github.com/greened/git-project/compare/v0.0.40...v0.0.41
