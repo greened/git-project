@@ -23,6 +23,9 @@
 
 import os
 
+import pygit2
+import pytest
+
 import git_project
 from git_project.test_support import check_config_file
 
@@ -82,6 +85,77 @@ def test_confobj_get(reset_directory, git):
 
     assert thing.first == "firstdefault"
     assert thing.second == "seconddefault"
+
+
+class GlobalThing(git_project.ConfigObject):
+    # Its own class, so the properties it gains stay out of MyThing's tests.
+    @classmethod
+    def get(cls, git, project_section, ident, **kwargs):
+        return super().get(
+            git, project_section, "globalthing", ident, **kwargs
+        )
+
+
+def local_config(git):
+    return pygit2.Config(os.path.join(git._repo.path, "config"))
+
+
+@pytest.fixture
+def global_git(reset_directory, local_repository, tmp_path):
+    # pygit2 ignores GIT_CONFIG_GLOBAL and caches HOME, so point its global
+    # search path at the test's own config.
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".gitconfig").write_text(
+        '[project "globalthing.test"]\n\tfirst = global\n'
+    )
+    search_path = pygit2.settings.search_path
+    level = pygit2.enums.ConfigLevel.GLOBAL
+    saved = search_path[level]
+    search_path[level] = str(home)
+    try:
+        os.chdir(local_repository.path)
+        yield git_project.Git()
+    finally:
+        search_path[level] = saved
+
+
+def test_confobj_get_does_not_copy_global_keys(global_git):
+    thing = GlobalThing.get(global_git, "project", "test")
+
+    assert thing.first == "global"
+    assert f"{thing.get_section()}.first" not in local_config(global_git)
+
+
+def test_confobj_rm_global_key(global_git):
+    thing = GlobalThing.get(global_git, "project", "test")
+    thing.second = "local"
+
+    # Only the local value can be removed, and the global one is not an error.
+    thing.rm()
+
+    assert f"{thing.get_section()}.second" not in local_config(global_git)
+
+
+def test_confobj_rm_item_global_value(global_git):
+    thing = GlobalThing.get(global_git, "project", "test")
+
+    thing.rm_item("first", "global")
+
+    assert global_git._repo.config[f"{thing.get_section()}.first"] == "global"
+
+
+def test_confobj_rm_item_refuses_two_matches(global_git):
+    thing = GlobalThing.get(global_git, "project", "test")
+    thing.add_item("third", "build")
+    thing.add_item("third", "build-debug")
+
+    with pytest.raises(git_project.GitProjectError):
+        thing.rm_item("third", "build")
+
+    assert set(
+        local_config(global_git).get_multivar(f"{thing.get_section()}.third")
+    ) == {"build", "build-debug"}
 
 
 def test_confobj_get_with_kwargs(reset_directory, git):

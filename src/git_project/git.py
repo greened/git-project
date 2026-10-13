@@ -284,30 +284,63 @@ class Git:
             def rm_items(self, key):
                 """Remove all values for the given key."""
                 del self._items[self.itemname(key)]
-                # No pygit2 interface for this.
-                prev_dir = Path.cwd()
-                os.chdir(self._git._repo.path)
-                capture_command(
-                    ["git", "config", "--unset-all", self.itemname(key)]
-                )
-                os.chdir(prev_dir)
+                self._unset("--unset-all", self.itemname(key))
 
             def rm_item(self, key, pattern):
-                """Remove all values matching pattern from the given key."""
+                """Remove the one local value matching pattern from the given
+                key. Raise GitProjectError when pattern matches more than one
+                local value.
+
+                """
                 item = self._items.get(self.itemname(key), None)
                 if not item:
                     return
+                self._unset("--unset", self.itemname(key), pattern)
+
                 item.remove_value(pattern)
                 if item.is_empty():
                     del self._items[self.itemname(key)]
 
-                # No pygit2 interface for this.
-                prev_dir = Path.cwd()
-                os.chdir(self._git._repo.path)
-                capture_command(
-                    ["git", "config", "--unset", self.itemname(key), pattern]
+            # No pygit2 interface for this.
+            def _unset(self, flag, key, *pattern):
+                """Run git config flag key [pattern] in the repository. Exit
+                status 5 means nothing was removed. That is not an error when
+                no value in the local config matches, as for a key set only in
+                another config file. --unset also exits 5 when the pattern
+                matches more than one local value, and that raises.
+
+                """
+                if self._git_config([flag, key, *pattern], (0, 5)) == 0:
+                    return
+                if not pattern:
+                    return
+                # git config --get-all exits 1 when nothing matches.
+                local = ["--local", "--get-all", key, *pattern]
+                if self._git_config(local, (0, 1)) == 0:
+                    raise GitProjectError(
+                        f"git config {shlex.join([flag, key, *pattern])}: "
+                        "more than one local value matches"
+                    )
+
+            def _git_config(self, args, statuses):
+                """Run git config with args in the repository and return its
+                exit status. Raise when the status is not in statuses.
+
+                """
+                command = ["git", "config", *args]
+                proc = subprocess.run(
+                    command,
+                    cwd=self._git._repo.path,
+                    capture_output=True,
+                    check=False,
                 )
-                os.chdir(prev_dir)
+                if proc.returncode not in statuses:
+                    stderr = proc.stderr.decode(errors="replace").strip()
+                    raise GitProjectError(
+                        f"{shlex.join(command)} exited with code "
+                        f"{proc.returncode}: {stderr}"
+                    )
+                return proc.returncode
 
             # No pygit2 interface for this.
             def rm(self):

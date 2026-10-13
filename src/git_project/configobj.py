@@ -118,27 +118,23 @@ class ConfigObject:
         kwargs: Keyword arguments of property values to set upon construction.
 
         """
-        inits = {}
-
         gitsection = ConfigObject._get_full_section(
             ConfigObject._map_project_section(project_section),
             subsection,
             ident,
         )
+        # Add a property for each loaded key but do not write it. The section
+        # merges every config level, so a write would copy keys from other
+        # levels into the repository's local config.
         if git.has_repo():
             config_section = git.config.get_section(gitsection)
             if config_section:
-                for key, item in config_section:
+                for key, _ in config_section:
                     name = key.rsplit(".", 1)[-1]
-                    if item.is_multival():
-                        inits[name] = list(item.itervalues())
-                    else:
-                        inits[name] = item.get_value()
+                    if not hasattr(cls, name):
+                        cls._add_property(name)
 
-        for key, value in kwargs.items():
-            inits[key] = value
-
-        result = cls(git, project_section, subsection, ident, **inits)
+        result = cls(git, project_section, subsection, ident, **kwargs)
 
         return result
 
