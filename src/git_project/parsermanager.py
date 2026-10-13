@@ -252,16 +252,16 @@ class ParserManager:
 
             """
 
+            action = self.parser.add_argument(name, *args, **kwargs)
+
             if name[0] in self.parser.prefix_chars:
-                action = kwargs.get("action", None)
-                has_value = (
-                    "nargs" in kwargs or not action or action == "store"
-                )
+                # argparse resolves an action by string or class. Actions
+                # taking no value set nargs to 0.
                 self.optional_arguments.append(
                     ParserManager.Parser.Argument(
                         name,
                         aliases=args,
-                        has_value=has_value,
+                        has_value=action.nargs != 0,
                         desc=kwargs.get("help", ""),
                         nargs=kwargs.get("nargs"),
                         choices=kwargs.get("choices"),
@@ -278,8 +278,6 @@ class ParserManager:
                         choices=kwargs.get("choices"),
                     )
                 )
-
-            self.parser.add_argument(name, *args, **kwargs)
 
         def set_defaults(self, **kwargs):
             """Set defaults for the wrapped parser.  Accepts the same arguments as argparse

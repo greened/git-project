@@ -21,6 +21,7 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import argparse
 import json
 
 import pytest
@@ -124,6 +125,37 @@ def test_menu_json(reset_directory, parser_manager, capsys):
             },
         ],
     }
+
+
+@pytest.mark.parametrize("action", ["append", "extend"])
+def test_menu_json_collecting_action_has_value(
+    reset_directory, parser_manager, capsys, action
+):
+    main = parser_manager.find_parser("__main__")
+    main.add_argument("--item", action=action, help="Collect items")
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json"]))
+
+    [item] = [opt for opt in menu["optionals"] if opt["name"] == "--item"]
+    assert item["has_value"] is True
+    assert item["nargs"] is None
+
+
+class _FlagAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, True)
+
+
+def test_menu_json_custom_flag_action_has_no_value(
+    reset_directory, parser_manager, capsys
+):
+    main = parser_manager.find_parser("__main__")
+    main.add_argument("--flag", action=_FlagAction, nargs=0, help="A flag")
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json"]))
+
+    [flag] = [opt for opt in menu["optionals"] if opt["name"] == "--flag"]
+    assert flag["has_value"] is False
 
 
 def test_menu_json_separate_value(reset_directory, parser_manager, capsys):
