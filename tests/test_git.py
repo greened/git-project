@@ -160,6 +160,8 @@ def test_git_config(reset_directory, local_repository):
                         found_section = True
                         if not key:
                             return True
+                elif line.strip().startswith("["):
+                    break
                 elif key:
                     if line.strip() == f"{key} = {value}":
                         if key_present:

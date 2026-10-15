@@ -53,6 +53,8 @@ def check_lines(section, key, value, section_present=True, key_present=True):
                     found_section = True
                     if not key:
                         return True
+            elif line.strip().startswith("["):
+                break
             elif key:
                 if line.strip() == f"{key} = {value}":
                     return key_present
