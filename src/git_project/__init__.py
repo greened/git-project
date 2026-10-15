@@ -162,9 +162,10 @@ full manual.
 
 ``--menu`` lists a command's subcommands, arguments and options in a form meant
 for tools. ``--menu=json`` prints them as one JSON object and adds each
-subcommand's aliases and each argument's ``nargs`` and ``choices``. The
-``version`` field changes only when a key is removed or changes meaning, so a
-reader should ignore keys it does not know.
+subcommand's aliases and each argument's ``nargs`` and ``choices``. An option's
+``name`` is its long flag when it has one. The ``version`` field changes only
+when a key is removed or changes meaning, so a reader should ignore keys it
+does not know.
 
 License
 =======

@@ -111,6 +111,14 @@ class ParserManager:
                     return None
                 return list(map(str, self.choices))
 
+            def menu_names(self):
+                # Keys on the long flag regardless of declaration order.
+                names = [self.name, *self.aliases]
+                long = next((n for n in names if n.startswith("--")), None)
+                if long is None:
+                    return self.name, list(self.aliases)
+                return long, [n for n in names if n != long]
+
         def __init__(self, key, parser):
             """Parser constructor.
 
@@ -160,8 +168,8 @@ class ParserManager:
                         ],
                         "optionals": [
                             {
-                                "name": optional.name,
-                                "aliases": list(optional.aliases),
+                                "name": optional.menu_names()[0],
+                                "aliases": optional.menu_names()[1],
                                 "has_value": optional.has_value,
                                 "nargs": optional.menu_nargs(),
                                 "choices": optional.menu_choices(),

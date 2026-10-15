@@ -68,6 +68,7 @@ def add_menu_entries(parser_manager):
     main.add_argument("where", nargs="?", help="Maybe a place")
     main.add_argument("mode", choices=["fast", "slow"], help="A mode")
     main.add_argument("--force", "-f", action="store_true", help="Force it")
+    main.add_argument("-b", "--branch", help="Short flag first")
     main.add_argument("--pair", nargs=2, help="Two values")
 
 
@@ -114,6 +115,14 @@ def test_menu_json(reset_directory, parser_manager, capsys):
                 "nargs": None,
                 "choices": None,
                 "description": "Force it",
+            },
+            {
+                "name": "--branch",
+                "aliases": ["-b"],
+                "has_value": True,
+                "nargs": None,
+                "choices": None,
+                "description": "Short flag first",
             },
             {
                 "name": "--pair",
@@ -181,6 +190,7 @@ def test_menu_text_unchanged(reset_directory, parser_manager, capsys, args):
         "mode:A mode\n"
         "OPTIONALS:\n"
         "--force:-f:False:Force it\n"
+        "-b:--branch:True:Short flag first\n"
         "--pair::True:Two values\n"
     )
 
