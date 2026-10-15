@@ -31,6 +31,13 @@ ChangeLog
 `Unreleased`_
 -------------
 
+`0.1.0`_ - 2026-10-15
+---------------------
+Changed
+.......
+- ``--menu=json`` names an option by its long flag when it has one, and lists its other flags as aliases, whatever order they were declared in.
+- Versions follow semantic versioning from 0.1.0. Before 1.0.0 a breaking change bumps the minor version, and a feature or a fix bumps the patch. From 1.0.0 on, a breaking change bumps the major version, a feature the minor and a fix the patch. ``--menu=json`` version 1 is part of that contract.
+
 `0.0.44`_ - 2026-10-13
 ----------------------
 Added
@@ -253,7 +260,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.0.44...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.0...HEAD
+.. _0.1.0: https://github.com/greened/git-project/compare/v0.0.44...v0.1.0
 .. _0.0.44: https://github.com/greened/git-project/compare/v0.0.43...v0.0.44
 .. _0.0.43: https://github.com/greened/git-project/compare/v0.0.42...v0.0.43
 .. _0.0.42: https://github.com/greened/git-project/compare/v0.0.41...v0.0.42
