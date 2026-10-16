@@ -92,18 +92,27 @@ def test_menu_json(reset_directory, parser_manager, capsys):
                 "name": "target",
                 "nargs": None,
                 "choices": None,
+                "complete": None,
+                "candidates": None,
+                "repeatable": False,
                 "description": "The target",
             },
             {
                 "name": "where",
                 "nargs": "?",
                 "choices": None,
+                "complete": None,
+                "candidates": None,
+                "repeatable": False,
                 "description": "Maybe a place",
             },
             {
                 "name": "mode",
                 "nargs": None,
                 "choices": ["fast", "slow"],
+                "complete": None,
+                "candidates": None,
+                "repeatable": False,
                 "description": "A mode",
             },
         ],
@@ -114,6 +123,9 @@ def test_menu_json(reset_directory, parser_manager, capsys):
                 "has_value": False,
                 "nargs": None,
                 "choices": None,
+                "complete": None,
+                "candidates": None,
+                "repeatable": False,
                 "description": "Force it",
             },
             {
@@ -122,6 +134,9 @@ def test_menu_json(reset_directory, parser_manager, capsys):
                 "has_value": True,
                 "nargs": None,
                 "choices": None,
+                "complete": None,
+                "candidates": None,
+                "repeatable": False,
                 "description": "Short flag first",
             },
             {
@@ -130,6 +145,9 @@ def test_menu_json(reset_directory, parser_manager, capsys):
                 "has_value": True,
                 "nargs": "2",
                 "choices": None,
+                "complete": None,
+                "candidates": None,
+                "repeatable": False,
                 "description": "Two values",
             },
         ],
@@ -165,6 +183,8 @@ def test_menu_json_custom_flag_action_has_no_value(
 
     [flag] = [opt for opt in menu["optionals"] if opt["name"] == "--flag"]
     assert flag["has_value"] is False
+    # Shipped in version 1, so it stays.
+    assert flag["nargs"] == "0"
 
 
 def test_menu_json_separate_value(reset_directory, parser_manager, capsys):
@@ -193,6 +213,148 @@ def test_menu_text_unchanged(reset_directory, parser_manager, capsys, args):
         "-b:--branch:True:Short flag first\n"
         "--pair::True:Two values\n"
     )
+
+
+def add_menu_tree(parser_manager):
+    command = parser_manager.find_subparser("command")
+    first = parser_manager.add_parser(
+        command, "first", "first", aliases=["f"], help="First"
+    )
+    second = parser_manager.add_parser(command, "second", "second")
+    # The same command name under two parents, told apart by the link.
+    for parent in (first, second):
+        sub = parser_manager.add_subparser(
+            parent, f"{parent.key}-command", dest=f"{parent.key}_command"
+        )
+        child = parser_manager.add_parser(
+            sub, "add", f"{parent.key}-add", help=f"{parent.key} add"
+        )
+        child.add_argument(f"--{parent.key}-only", help="Only here")
+
+
+def test_menu_json_tree(reset_directory, parser_manager, capsys):
+    add_menu_tree(parser_manager)
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json-tree"]))
+
+    assert menu["version"] == 1
+    first, second = menu["commands"]
+    assert first["name"] == "first"
+    assert first["aliases"] == ["f"]
+    for parent in (first, second):
+        [add] = parent["menu"]["commands"]
+        assert add["description"] == f"{parent['name']} add"
+        # A leaf has an empty command list, not a missing one.
+        assert add["menu"]["commands"] == []
+        assert [opt["name"] for opt in add["menu"]["optionals"]] == [
+            f"--{parent['name']}-only"
+        ]
+
+
+def test_menu_json_tree_on_subcommand(reset_directory, parser_manager, capsys):
+    add_menu_tree(parser_manager)
+
+    menu = json.loads(
+        run_menu(parser_manager, capsys, ["second", "--menu=json-tree"])
+    )
+
+    [add] = menu["commands"]
+    assert add["description"] == "second add"
+    assert add["menu"]["commands"] == []
+
+
+def test_menu_json_has_no_nested_menu(reset_directory, parser_manager, capsys):
+    add_menu_tree(parser_manager)
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json"]))
+
+    assert all("menu" not in command for command in menu["commands"])
+
+
+def add_hinted_arguments(parser_manager):
+    command = parser_manager.find_subparser("command")
+    main = parser_manager.add_parser(command, "hinted", "hinted")
+    main.add_argument(
+        "name",
+        complete="worktree",
+        candidates=["one", 2],
+        help="A worktree",
+    )
+    main.add_argument("--branch", complete="branch", help="A branch")
+
+
+@pytest.mark.parametrize("values", ["json", "json-tree"])
+def test_menu_json_hints(reset_directory, parser_manager, capsys, values):
+    add_hinted_arguments(parser_manager)
+
+    menu = json.loads(
+        run_menu(parser_manager, capsys, ["hinted", f"--menu={values}"])
+    )
+
+    [name] = menu["positionals"]
+    assert name["complete"] == "worktree"
+    assert name["candidates"] == ["one", "2"]
+    [branch] = [opt for opt in menu["optionals"] if opt["name"] == "--branch"]
+    assert branch["complete"] == "branch"
+    assert branch["candidates"] is None
+
+
+def test_menu_hints_are_not_argparse_arguments(
+    reset_directory, parser_manager, capsys
+):
+    add_hinted_arguments(parser_manager)
+
+    # candidates suggests values but does not restrict them.
+    clargs = parser_manager.parse_args(["hinted", "three", "--branch", "b"])
+    assert clargs.name == "three"
+    assert not hasattr(clargs, "complete")
+    assert not hasattr(clargs, "candidates")
+
+    usage = run_menu(parser_manager, capsys, ["hinted", "-h"])
+    assert "worktree" not in usage.replace("A worktree", "")
+    assert "one" not in usage
+
+
+class _CollectAction(argparse._AppendAction):
+    pass
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "repeatable"),
+    [
+        ({"action": "append"}, True),
+        ({"action": argparse._AppendAction}, True),
+        ({"action": argparse._AppendConstAction, "const": 1}, True),
+        ({"action": argparse._ExtendAction, "nargs": "+"}, True),
+        ({"action": argparse._CountAction}, True),
+        ({"action": _CollectAction}, True),
+        ({"action": "append_const", "const": 1}, True),
+        ({"action": "extend", "nargs": "+"}, True),
+        ({"action": "count"}, True),
+        ({"action": "store_true"}, False),
+        ({}, False),
+    ],
+)
+def test_menu_json_repeatable(
+    reset_directory, parser_manager, capsys, kwargs, repeatable
+):
+    main = parser_manager.find_parser("__main__")
+    main.add_argument("--opt", help="An option", **kwargs)
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json"]))
+
+    [opt] = [opt for opt in menu["optionals"] if opt["name"] == "--opt"]
+    assert opt["repeatable"] is repeatable
+
+
+def test_menu_json_nargs(reset_directory, parser_manager, capsys):
+    main = parser_manager.find_parser("__main__")
+    main.add_argument("pair", nargs=2, help="Two values")
+    main.add_argument("rest", nargs=argparse.REMAINDER, help="The rest")
+
+    menu = json.loads(run_menu(parser_manager, capsys, ["--menu=json"]))
+
+    assert [pos["nargs"] for pos in menu["positionals"]] == ["2", "..."]
 
 
 def test_menu_rejects_other_values(reset_directory, parser_manager):

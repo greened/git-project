@@ -163,9 +163,19 @@ full manual.
 ``--menu`` lists a command's subcommands, arguments and options in a form meant
 for tools. ``--menu=json`` prints them as one JSON object and adds each
 subcommand's aliases and each argument's ``nargs`` and ``choices``. An option's
-``name`` is its long flag when it has one. The ``version`` field changes only
-when a key is removed or changes meaning, so a reader should ignore keys it
-does not know.
+``name`` is its long flag when it has one. ``--menu=json-tree`` prints the same
+object with each subcommand's own object nested under its ``menu`` key, so one
+call returns every level. The ``version`` field changes only when a key is
+removed or changes meaning, so a reader should ignore keys it does not know.
+
+``nargs`` is null when the argument takes argparse's default, one value or none
+for a switch. Otherwise it is a count such as ``"2"``, or ``"?"``, ``"*"``,
+``"+"`` or ``"..."``, which takes every remaining word as written. Three keys help a tool offer values. ``complete``
+names the kind of value: ``branch``, ``committish``, ``directory``, ``file``,
+``remote`` or ``worktree``, a git-project worktree name. A null or unknown
+``complete`` means free text. ``candidates`` lists values to suggest, which
+unlike ``choices`` the command does not enforce. ``repeatable`` is true when
+each use of an option adds to its value rather than replacing it.
 
 License
 =======

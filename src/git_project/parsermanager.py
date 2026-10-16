@@ -94,7 +94,17 @@ class ParserManager:
 
         class Argument:
             def __init__(
-                self, name, aliases, has_value, desc, nargs=None, choices=None
+                self,
+                name,
+                aliases,
+                has_value,
+                desc,
+                nargs=None,
+                choices=None,
+                complete=None,
+                candidates=None,
+                repeatable=False,
+                parser=None,
             ):
                 self.name = name
                 self.aliases = aliases
@@ -102,6 +112,11 @@ class ParserManager:
                 self.description = desc
                 self.nargs = nargs
                 self.choices = choices
+                self.complete = complete
+                self.candidates = candidates
+                self.repeatable = repeatable
+                # The child Parser of a command.
+                self.parser = parser
 
             def menu_nargs(self):
                 return None if self.nargs is None else str(self.nargs)
@@ -110,6 +125,11 @@ class ParserManager:
                 if self.choices is None:
                     return None
                 return list(map(str, self.choices))
+
+            def menu_candidates(self):
+                if self.candidates is None:
+                    return None
+                return list(map(str, self.candidates))
 
             def menu_names(self):
                 # Keys on the long flag regardless of declaration order.
@@ -146,38 +166,8 @@ class ParserManager:
 
             def call(self, parser, namespace, values, option_string=None):
                 parser = self.parser
-                if values == "json":
-                    menu = {
-                        "version": 1,
-                        "commands": [
-                            {
-                                "name": command.name,
-                                "aliases": list(command.aliases),
-                                "description": command.description,
-                            }
-                            for command in parser.command_arguments
-                        ],
-                        "positionals": [
-                            {
-                                "name": positional.name,
-                                "nargs": positional.menu_nargs(),
-                                "choices": positional.menu_choices(),
-                                "description": positional.description,
-                            }
-                            for positional in parser.positional_arguments
-                        ],
-                        "optionals": [
-                            {
-                                "name": optional.menu_names()[0],
-                                "aliases": optional.menu_names()[1],
-                                "has_value": optional.has_value,
-                                "nargs": optional.menu_nargs(),
-                                "choices": optional.menu_choices(),
-                                "description": optional.description,
-                            }
-                            for optional in parser.optional_arguments
-                        ],
-                    }
+                if values in ("json", "json-tree"):
+                    menu = parser._menu_object(tree=values == "json-tree")
                     print(json.dumps(menu))
                     sys.exit(0)
 
@@ -206,10 +196,66 @@ class ParserManager:
                 "--menu",
                 nargs="?",
                 const="text",
-                choices=["text", "json"],
+                choices=["text", "json", "json-tree"],
                 action=action_class,
-                help="Print the menu for tools, as text (the default) or JSON",
+                help=(
+                    "Print the menu for tools, as text (the default), JSON "
+                    "or JSON with every subcommand's menu nested"
+                ),
             )
+
+        def _menu_object(self, tree):
+            """Return this parser's --menu=json object. With tree, each
+            command also carries its child parser's object under "menu".
+
+            """
+
+            def command_object(command):
+                obj = {
+                    "name": command.name,
+                    "aliases": list(command.aliases),
+                    "description": command.description,
+                }
+                if tree:
+                    obj["menu"] = command.parser._menu_object(tree)
+                return obj
+
+            def hints(argument):
+                return {
+                    "complete": argument.complete,
+                    "candidates": argument.menu_candidates(),
+                    "repeatable": argument.repeatable,
+                }
+
+            return {
+                "version": 1,
+                "commands": [
+                    command_object(command)
+                    for command in self.command_arguments
+                ],
+                "positionals": [
+                    {
+                        "name": positional.name,
+                        "nargs": positional.menu_nargs(),
+                        "choices": positional.menu_choices(),
+                        **hints(positional),
+                        "description": positional.description,
+                    }
+                    for positional in self.positional_arguments
+                ],
+                "optionals": [
+                    {
+                        "name": optional.menu_names()[0],
+                        "aliases": optional.menu_names()[1],
+                        "has_value": optional.has_value,
+                        "nargs": optional.menu_nargs(),
+                        "choices": optional.menu_choices(),
+                        **hints(optional),
+                        "description": optional.description,
+                    }
+                    for optional in self.optional_arguments
+                ],
+            }
 
         def _add_subparser(self, subparser):
             """Add a subparser as a child of this parser.
@@ -256,11 +302,32 @@ class ParserManager:
 
             args: Pass-through to the underlying argparser parser.
 
-            kwargs: Pass-through to the underlying argparser parser.
+            kwargs: Pass-through to the underlying argparser parser, except
+            for two keywords that only the JSON menus read.
+
+            complete: What kind of value the argument takes, for a tool's
+            completion: "branch", "committish", "directory", "file",
+            "remote" or "worktree".
+
+            candidates: Values to suggest. Unlike choices, argparse does not
+            enforce them.
 
             """
+            complete = kwargs.pop("complete", None)
+            candidates = kwargs.pop("candidates", None)
 
             action = self.parser.add_argument(name, *args, **kwargs)
+
+            # Each use of these actions adds to the value. argparse resolves
+            # an action string to its class, and extend subclasses append.
+            repeatable = isinstance(
+                action,
+                (
+                    argparse._AppendAction,
+                    argparse._AppendConstAction,
+                    argparse._CountAction,
+                ),
+            )
 
             if name[0] in self.parser.prefix_chars:
                 # argparse resolves an action by string or class. Actions
@@ -273,6 +340,9 @@ class ParserManager:
                         desc=kwargs.get("help", ""),
                         nargs=kwargs.get("nargs"),
                         choices=kwargs.get("choices"),
+                        complete=complete,
+                        candidates=candidates,
+                        repeatable=repeatable,
                     )
                 )
             else:
@@ -284,6 +354,9 @@ class ParserManager:
                         desc=kwargs.get("help", ""),
                         nargs=kwargs.get("nargs"),
                         choices=kwargs.get("choices"),
+                        complete=complete,
+                        candidates=candidates,
+                        repeatable=repeatable,
                     )
                 )
 
@@ -390,6 +463,7 @@ class ParserManager:
                 aliases=list(kwargs.get("aliases", [])),
                 has_value=False,
                 desc=kwargs.get("help", ""),
+                parser=parser,
             )
         )
 
