@@ -367,3 +367,34 @@ def test_confobj_mapped_section_reloads(reset_directory, git):
 
     again = Reader.get(git, "fizz_bin.x", "thing", "one")
     assert again.color == "blue"
+
+
+def test_confobj_iter_idents(reset_directory, git):
+    class Thing(git_project.ConfigObject):
+        pass
+
+    for subsection, ident in [
+        ("thing", "one"),
+        ("thing", "two.x"),
+        # A longer subsection that starts with the same name.
+        ("thingpath", "three"),
+    ]:
+        Thing.get(git, "fizz_bin", subsection, ident).color = "blue"
+
+    # An empty ident is legal config but names no object.
+    git._repo.config["fizz-bin.thing..color"] = "green"
+    git.reload_config()
+
+    Thing.get(git, "fizz_bin", "thing", "Mixed").color = "red"
+    Thing.get(git, "fizz_bin", "thing", "gone").color = "red"
+    Thing.get(git, "fizz_bin", "thing", "gone").rm()
+
+    idents = git_project.ConfigObject.iter_idents(git, "fizz_bin", "thing")
+    assert sorted(idents) == ["Mixed", "one", "two.x"]
+    assert all(
+        git_project.ConfigObject.exists(git, "fizz_bin", "thing", ident)
+        for ident in ["Mixed", "one", "two.x"]
+    )
+    assert not list(
+        git_project.ConfigObject.iter_idents(git, "fizz_bin", "other")
+    )

@@ -382,6 +382,10 @@ class Git:
             """Get the named section from the config."""
             return self._sections.get(section, None)
 
+        def iter_section_names(self):
+            """Yield the name of each section in the config."""
+            yield from list(self._sections)
+
         def rm_section(self, section_name):
             """Remove the named section from the config."""
             section = self.get_section(section_name)

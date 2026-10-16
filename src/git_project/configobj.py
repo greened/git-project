@@ -165,6 +165,35 @@ class ConfigObject:
         section = git.config.get_section(gitsection)
         return True if section else False
 
+    @classmethod
+    def iter_idents(cls, git, project_section, subsection):
+        """Yield the ident of each ConfigObject that exists under subsection.
+
+        git: An object to query the repository and make config changes.
+
+        project_section: git config section of the active project.
+
+        subsection: The subsection whose idents to list.
+
+        """
+        if not git.has_repo():
+            return
+
+        prefix = (
+            ConfigObject._get_full_section(
+                ConfigObject._map_project_section(project_section),
+                subsection,
+                None,
+            )
+            + "."
+        )
+
+        for name in git.config.iter_section_names():
+            ident = name[len(prefix) :]
+            # An empty ident names the subsection itself, not an object.
+            if name.startswith(prefix) and ident:
+                yield ident
+
     @staticmethod
     def _map_project_section(project_section):
         """Return the git config section name for project_section. get, exists and
