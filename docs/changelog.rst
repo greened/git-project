@@ -31,6 +31,14 @@ ChangeLog
 `Unreleased`_
 -------------
 
+`0.1.1`_ - 2026-10-19
+---------------------
+Added
+.....
+- ``ConfigObject.iter_idents`` lists the idents of the objects recorded under a subsection, so a plugin can offer them as ``candidates``.
+- ``--menu=json`` gives each argument ``complete``, ``candidates`` and ``repeatable`` keys, set from new ``complete=`` and ``candidates=`` keywords to ``add_argument`` and from the argparse action.
+- ``--menu=json-tree`` prints the whole command tree in one call, with each subcommand's menu nested under its ``menu`` key.
+
 `0.1.0`_ - 2026-10-15
 ---------------------
 Changed
@@ -260,7 +268,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.0...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.1...HEAD
+.. _0.1.1: https://github.com/greened/git-project/compare/v0.1.0...v0.1.1
 .. _0.1.0: https://github.com/greened/git-project/compare/v0.0.44...v0.1.0
 .. _0.0.44: https://github.com/greened/git-project/compare/v0.0.43...v0.0.44
 .. _0.0.43: https://github.com/greened/git-project/compare/v0.0.42...v0.0.43
