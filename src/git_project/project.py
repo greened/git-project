@@ -161,7 +161,7 @@ class Project(ScopedConfigObject):
         for target in self.iterbranches():
             target_refname = target
             if target in self._git.iterbranches():
-                target_refname = self._git.committish_to_refname(target)
+                target_refname = self._git.branch_refname(target)
             for remote in self.iterremotes():
                 target_remote_refname = self._git.get_remote_push_refname(
                     target_refname, remote

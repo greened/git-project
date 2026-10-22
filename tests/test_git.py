@@ -479,6 +479,17 @@ def test_git_branch_name_to_refname(reset_directory, local_repository):
     )
 
 
+def test_git_branch_refname(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    assert git.has_repo()
+
+    assert git.branch_refname("master") == "refs/heads/master"
+    assert git.branch_refname("origin/master") == "refs/remotes/origin/master"
+
+
 def test_git_get_remote_fetch_refname(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
@@ -570,6 +581,20 @@ def test_git_refname_is_merged(reset_directory, local_repository):
     )
     assert git.refname_is_merged("merged_local", "master")
     assert not git.refname_is_merged("merged_local", "nonexistent")
+
+
+def test_git_refname_is_merged_tag_shadows_branch(
+    reset_directory, local_repository
+):
+    os.chdir(local_repository.path)
+
+    pushed = local_repository.revparse_single("refs/heads/pushed")
+    local_repository.references.create("refs/tags/master", pushed.id)
+
+    git = git_project.Git()
+
+    assert git.refname_is_merged("refs/heads/merged_local", "master")
+    assert not git.refname_is_merged("refs/heads/pushed", "master")
 
 
 def test_git_iterrefnames(reset_directory, local_repository):

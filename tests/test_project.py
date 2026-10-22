@@ -118,6 +118,21 @@ def test_project_branch_is_merged(project):
     assert project.branch_is_merged("pushed_remote_only")
 
 
+def test_project_branch_is_merged_tag_shadows_branch(git):
+    # A tag named like the project branch, off the main line. revparse
+    # prefers refs/tags/master over refs/heads/master. Only master is a
+    # project branch here, so pushed_indirectly is merged through
+    # origin/master alone.
+    project = git_project.Project.get(git, "project")
+    repo = git._repo
+    pushed = repo.revparse_single("refs/heads/pushed")
+    repo.references.create("refs/tags/master", pushed.id)
+
+    assert project.branch_is_merged("refs/heads/merged_local")
+    assert project.branch_is_merged("refs/heads/pushed_indirectly")
+    assert not project.branch_is_merged("refs/heads/unmerged")
+
+
 def test_project_branch_is_pushed(project):
     assert not project.branch_is_pushed("master")
     assert project.branch_is_pushed("pushed")

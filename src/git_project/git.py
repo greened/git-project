@@ -772,6 +772,11 @@ class Git:
             return branch_name
         return prefix + branch_name
 
+    def branch_refname(self, branch_name):
+        """Return the refname of the local or remote-tracking branch with the
+        given name."""
+        return self._repo.branches[branch_name].name
+
     def get_remote_fetch_refname(self, refname, remote):
         """Get the refname on the remote side for a fetch of the given local refname."""
         # FIXME: pygit2 should expose this.
@@ -844,12 +849,16 @@ class Git:
 
     def refname_is_merged(self, refname, target):
         """Return whether commits pointed to by the given refname are accessible from
-        the given target committish.
+        the given target branch.  The target is a branch name or refname.  Any
+        other committish, such as a tag or a SHA, gives False.
 
         """
         target_branch = self.refname_to_branch_name(target)
         if target_branch not in self._repo.branches:
             return False
+        if not target.startswith("refs/"):
+            # revparse would pick a tag of the same name over the branch.
+            target = self.branch_refname(target_branch)
 
         ref_oid = self.get_committish_oid(refname)
         target_oid = self.get_committish_oid(target)
