@@ -718,8 +718,9 @@ def test_git_ssh_credentials(reset_directory):
         "",
     )
 
-    # Without an ssh ID we must not name a key.
-    assert git_project.Git._ssh_credentials(None, "git", ssh_key) is None
+    # Without an ssh ID, a request for only an ssh key is an error.
+    with pytest.raises(git_project.GitProjectError, match=r"ssh\.id"):
+        git_project.Git._ssh_credentials(None, "git", ssh_key)
 
     credentials = git_project.Git._ssh_credentials(
         None, "git", ssh_key | username
@@ -1271,9 +1272,7 @@ def test_git_remote_credentials(reset_directory):
 
     no_id = git_project.Git.RemoteCallbacks(ssh_id=None)
 
-    assert (
+    with pytest.raises(git_project.GitProjectError, match=r"ssh\.id"):
         no_id.credentials(
             "ssh:me@my.org/test.git", "me", pygit2.enums.CredentialType.SSH_KEY
         )
-        is None
-    )

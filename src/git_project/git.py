@@ -55,7 +55,8 @@ class Git:
     The remote operations authenticate with ssh when the repository's ssh.id
     names a keypair, ~/.ssh/<id> and ~/.ssh/<id>.pub. The key must have no
     passphrase, because git-project offers no passphrase and does not ask an
-    ssh agent. Without ssh.id no keypair is offered.
+    ssh agent. Without ssh.id no keypair is offered, and an ssh remote fails
+    with a one-line error.
 
     remote_branch_exists and delete_remote_branch run the git CLI instead,
     so they read ~/.ssh/config and use the ssh agent. With ssh.id set they
@@ -68,8 +69,9 @@ class Git:
     @staticmethod
     def _ssh_credentials(ssh_id, username_from_url, allowed_types):
         """Return the credentials to authenticate with, or None if we have none to
-        offer.  Name the keypair under ~/.ssh for the given ssh ID.  Offer no
-        keypair without an ssh ID.
+        offer.  Name the keypair under ~/.ssh for the given ssh ID.  Raise a
+        GitProjectError when the remote asks for an ssh key and there is no ssh
+        ID.
 
         """
         if ssh_id and allowed_types & pygit2.enums.CredentialType.SSH_KEY:
@@ -81,6 +83,13 @@ class Git:
             )
         elif allowed_types & pygit2.enums.CredentialType.USERNAME:
             return pygit2.Username(username_from_url)
+        elif allowed_types & pygit2.enums.CredentialType.SSH_KEY:
+            # pygit2 raises a TypeError on None and re-raises any
+            # exception the callback raises.
+            raise GitProjectError(
+                "cannot authenticate over ssh: no key to offer (a fetch uses"
+                " ssh.id; a clone needs an https url)"
+            )
         return None
 
     class RemoteCallbacks(pygit2.RemoteCallbacks):
