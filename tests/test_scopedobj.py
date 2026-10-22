@@ -185,7 +185,7 @@ def test_scopedobj_iteritems_multi(reset_directory, git):
 
     assert result == {
         ("name", "child"),
-        ("value", frozenset(["ChildScope", "second"])),
+        ("value", ("ChildScope", "second")),
         ("parentonly", "ParentOnly"),
         ("childonly", "ChildOnly"),
     }

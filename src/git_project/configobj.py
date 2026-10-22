@@ -36,7 +36,7 @@ arguments on top.
 Setting an attribute writes it to the config at once, and reading it reads
 the config. Values must be strings. ``add_item`` adds a value to a key
 instead of replacing it, which makes a key with several values. Read back, a
-key with several values gives a ``frozenset``.
+key with several values gives a ``tuple``, in the order git reads the values.
 
 The attributes are properties on the class, not on the instance. The first
 time a class sets a key, the class gains a property for it, and every
@@ -243,12 +243,12 @@ class ConfigObject:
         git config when written."""
 
         def fun_get(self):
-            result = set(self.iter_multival(name))
+            result = tuple(dict.fromkeys(self.iter_multival(name)))
             if not result:
                 return None
             if len(result) == 1:
-                return result.pop()
-            return frozenset(result)
+                return result[0]
+            return result
 
         def fun_set(self, value):
             self._set_item(name, value)

@@ -21,7 +21,10 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import json
 import os
+import subprocess
+import sys
 
 import pygit2
 import pytest
@@ -221,6 +224,46 @@ def test_confobj_multival(reset_directory, git):
     assert values == {"one", "two"}
 
 
+# Eight values in no sorted order, so neither a set nor a sort yields
+# this order by chance.
+MULTIVAL_ORDER = ["hello", "bye", "zeta", "alpha", "mid", "omega", "beta", "x"]
+
+MULTIVAL_READER = """
+import json
+import git_project
+
+class MyThing(git_project.ConfigObject):
+    pass
+
+git = git_project.Git()
+thing = MyThing.get(git, "project", "mything", "test")
+print(json.dumps([list(thing.iter_multival("test")), list(thing.test)]))
+"""
+
+
+@pytest.mark.parametrize("seed", ["0", "1", "2", "3", "4"])
+def test_confobj_multival_keeps_config_order(reset_directory, git, seed):
+    thing = MyThing.get(git, "project", "test")
+    for value in MULTIVAL_ORDER:
+        thing.add_item("test", value)
+
+    assert list(thing.iter_multival("test")) == MULTIVAL_ORDER
+    assert thing.test == tuple(MULTIVAL_ORDER)
+
+    # A new process loads the config fresh, and its string hashes change
+    # with the seed.
+    env = dict(os.environ, PYTHONHASHSEED=seed)
+    proc = subprocess.run(
+        [sys.executable, "-c", MULTIVAL_READER],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+    assert json.loads(proc.stdout) == [MULTIVAL_ORDER, MULTIVAL_ORDER]
+
+
 def test_confobj_write(reset_directory, git):
     thing = MyThing.get(git, "project", "test")
 
@@ -291,7 +334,7 @@ def test_confobj_iteritems_multi(reset_directory, git):
 
     assert result == [
         ("first", "firstdefault"),
-        ("second", {"seconddefault", "secondsecond"}),
+        ("second", ("seconddefault", "secondsecond")),
     ]
 
 
@@ -309,7 +352,7 @@ def test_confobj_get_multi(reset_directory, git):
 
     assert result == [
         ("first", "firstdefault"),
-        ("second", {"seconddefault", "secondsecond"}),
+        ("second", ("seconddefault", "secondsecond")),
     ]
 
 

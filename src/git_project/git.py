@@ -170,7 +170,8 @@ class Git:
 
                 def __init__(self, key):
                     self._key = key
-                    self._values = set()
+                    # A dict, not a set, so values keep config file order.
+                    self._values = {}
 
                 @property
                 def key(self):
@@ -202,7 +203,7 @@ class Git:
                 def add_value(self, value):
                     """Add a value to this key, potentially turning it into a multi-value key."""
                     assert value not in self._values
-                    self._values.add(value)
+                    self._values[value] = None
 
                 def clear(self):
                     """Remove all values for this key."""
@@ -215,7 +216,7 @@ class Git:
                 def remove_value(self, pattern):
                     """Remove the specified value from this key, leaving any other values in place."""
                     self._values = {
-                        value
+                        value: None
                         for value in self._values
                         if not re.search(pattern, value)
                     }
@@ -385,8 +386,8 @@ class Git:
                         sections[section] = {}
                     section_entry = sections[section]
                     if key not in section_entry:
-                        section_entry[key] = set()
-                    section_entry[key].add(entry.value)
+                        section_entry[key] = {}
+                    section_entry[key][entry.value] = None
 
                 self._git.validate_config()
                 for section_name, section_dict in sections.items():
