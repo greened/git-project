@@ -157,7 +157,9 @@ class Project(ScopedConfigObject):
         committish: The committish to check
 
         """
-        refname = self._git.committish_to_refname(committish)
+        ref = self._git.branch_or_committish_ref(committish)
+        # A bare SHA has no ref, and revparse takes it as it is.
+        refname = ref.name if ref is not None else committish
         for target in self.iterbranches():
             target_refname = target
             if target in self._git.iterbranches():
@@ -184,8 +186,11 @@ class Project(ScopedConfigObject):
         committish: The committish to check
 
         """
+        ref = self._git.branch_or_committish_ref(committish)
+        # A bare SHA has no ref, and revparse takes it as it is.
+        refname = ref.name if ref is not None else committish
         for branch in self.iterbranches():
-            if self._git.refname_is_merged(committish, branch):
+            if self._git.refname_is_merged(refname, branch):
                 return True
         # See if it might be merged (and therefore pushed) on the remote.
         return self.branch_is_merged_remotely(committish)

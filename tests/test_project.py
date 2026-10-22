@@ -133,6 +133,37 @@ def test_project_branch_is_merged_tag_shadows_branch(git):
     assert not project.branch_is_merged("refs/heads/unmerged")
 
 
+def test_project_branch_is_merged_short_name_tag_shadows_branch(git, project):
+    # A tag named like the branch being checked, on master.
+    repo = git._repo
+    master = repo.revparse_single("refs/heads/master")
+    repo.references.create("refs/tags/unmerged", master.id)
+
+    assert not project.branch_is_merged("unmerged")
+
+
+def test_project_branch_is_merged_sha(git, project):
+    merged_local = git._repo.revparse_single("refs/heads/merged_local")
+
+    assert project.branch_is_merged(str(merged_local.id))
+
+
+def test_project_unmerged_sha(git, project):
+    unmerged = git._repo.revparse_single("refs/heads/unmerged")
+
+    assert not project.branch_is_merged(str(unmerged.id))
+    assert not project.branch_is_pushed(str(unmerged.id))
+
+
+def test_project_branch_is_merged_remotely_tag_shadows_branch(git, project):
+    # A tag named like the branch being checked, on origin/master.
+    repo = git._repo
+    origin_master = repo.revparse_single("refs/remotes/origin/master")
+    repo.references.create("refs/tags/notpushed", origin_master.id)
+
+    assert not project.branch_is_merged_remotely("notpushed")
+
+
 def test_project_branch_is_pushed(project):
     assert not project.branch_is_pushed("master")
     assert project.branch_is_pushed("pushed")

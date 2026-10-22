@@ -362,6 +362,28 @@ def test_git_worktree(reset_directory, local_repository):
     assert not os.path.exists(worktree_path)
 
 
+def test_git_add_worktree_tag_shadows_branch(
+    reset_directory, local_repository
+):
+    os.chdir(local_repository.path)
+
+    git = git_project.Git()
+
+    commit, _ref = git._repo.resolve_refish("HEAD")
+    git._repo.branches.create("test-wt", commit)
+    git._repo.references.create("refs/tags/test-wt", commit.id)
+
+    worktree_checkout_path = Path.cwd() / ".." / ".." / "test-wt"
+
+    git.add_worktree("test-wt", str(worktree_checkout_path), "test-wt")
+
+    worktree_repo = pygit2.Repository(str(worktree_checkout_path))
+    assert worktree_repo.head.name == "refs/heads/test-wt"
+
+    shutil.rmtree(worktree_checkout_path)
+    git.prune_worktree("test-wt")
+
+
 def test_git_get_working_copy_root(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
@@ -402,6 +424,29 @@ def test_git_committish_to_refname(reset_directory, local_repository):
     assert git.has_repo()
 
     assert git.committish_to_refname("HEAD") == "refs/heads/master"
+
+
+def test_git_branch_or_committish_ref_tag_shadows_branch(
+    reset_directory, local_repository
+):
+    os.chdir(local_repository.path)
+
+    master = local_repository.revparse_single("refs/heads/master")
+    local_repository.references.create("refs/tags/unmerged", master.id)
+    local_repository.references.create("refs/tags/only-a-tag", master.id)
+
+    git = git_project.Git()
+
+    assert (
+        git.branch_or_committish_ref("unmerged").name == "refs/heads/unmerged"
+    )
+    assert (
+        git.branch_or_committish_ref("only-a-tag").name
+        == "refs/tags/only-a-tag"
+    )
+    assert git.branch_or_committish_ref("HEAD").name == "refs/heads/master"
+    assert git.branch_or_committish_ref("master~1") is None
+    assert git.branch_or_committish_ref(str(master.id)) is None
 
 
 def test_git_get_committish_oid(reset_directory, local_repository):
@@ -557,6 +602,22 @@ def test_git_committish_is_pushed(reset_directory, local_repository):
 
     assert git.committish_is_pushed("pushed", "origin")
     assert not git.committish_is_pushed("merged_local", "origin")
+    assert not git.committish_is_pushed("notpushed", "origin")
+
+
+def test_git_committish_is_pushed_tag_shadows_branch(
+    reset_directory, local_repository
+):
+    os.chdir(local_repository.path)
+
+    pushed = local_repository.revparse_single("refs/heads/pushed")
+    notpushed = local_repository.revparse_single("refs/heads/notpushed")
+    local_repository.references.create("refs/tags/pushed", notpushed.id)
+    local_repository.references.create("refs/tags/notpushed", pushed.id)
+
+    git = git_project.Git()
+
+    assert git.committish_is_pushed("pushed", "origin")
     assert not git.committish_is_pushed("notpushed", "origin")
 
 
@@ -1401,6 +1462,19 @@ def test_git_checkout(reset_directory, local_repository):
     )
 
 
+def test_git_checkout_tag_shadows_branch(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+
+    master = local_repository.revparse_single("refs/heads/master")
+    local_repository.references.create("refs/tags/unmerged", master.id)
+
+    git = git_project.Git()
+
+    git.checkout("unmerged")
+
+    assert git.get_current_refname() == "refs/heads/unmerged"
+
+
 def test_git_update_symbolic_ref(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
@@ -1421,6 +1495,21 @@ def test_git_update_symbolic_ref(reset_directory, local_repository):
     )
 
     assert git.get_committish_oid("HEAD") == git.get_committish_oid("master")
+
+
+def test_git_update_symbolic_ref_tag_shadows_branch(
+    reset_directory, local_repository
+):
+    os.chdir(local_repository.path)
+
+    master = local_repository.revparse_single("refs/heads/master")
+    local_repository.references.create("refs/tags/unmerged", master.id)
+
+    git = git_project.Git()
+
+    git.update_symbolic_ref("HEAD", "unmerged")
+
+    assert local_repository.references["HEAD"].target == "refs/heads/unmerged"
 
 
 def test_git_delete_branch(reset_directory, local_repository):

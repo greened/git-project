@@ -661,6 +661,18 @@ class Git:
         """Translate a committish to a refname."""
         return self.committish_to_ref(committish).name
 
+    def branch_or_committish_ref(self, committish):
+        """Translate a committish to a reference object, or None for one with no
+        ref, such as a SHA. A branch wins over a tag of the same name."""
+        try:
+            branch = self._repo.branches.get(committish)
+        except pygit2.InvalidSpecError:
+            # Not a branch name at all, such as master~1.
+            branch = None
+        if branch is not None:
+            return branch
+        return self.committish_to_ref(committish)
+
     def get_committish_commit(self, committish):
         """Get the commit object for a committish."""
         commit = self._repo.revparse_single(committish)
@@ -832,8 +844,11 @@ class Git:
         on the remote under another branch.
 
         """
-        local_oid = self.get_committish_oid(committish)
-        refname = self.committish_to_refname(committish)
+        ref = self.branch_or_committish_ref(committish)
+        if ref is None:
+            return False
+        refname = ref.name
+        local_oid = self.get_committish_oid(refname)
         remote_refname = self.get_remote_push_refname(refname, remote)
         if not self.committish_exists(remote_refname):
             return False
@@ -1137,7 +1152,7 @@ class Git:
 
     def checkout(self, committish):
         """Make the given committish active in the current worktree."""
-        refname = self.committish_to_refname(committish)
+        refname = self.branch_or_committish_ref(committish).name
         self._repo.checkout(refname)
 
     def add_worktree(self, name, path, committish):
@@ -1145,7 +1160,7 @@ class Git:
         with the given name to use as a handle.
 
         """
-        ref = self.committish_to_ref(committish)
+        ref = self.branch_or_committish_ref(committish)
         parent_path = Path(path).parent
         if not parent_path.exists():
             os.makedirs(parent_path)
@@ -1174,7 +1189,7 @@ class Git:
 
         """
         ref = self._repo.references.get(name)
-        refname = self.committish_to_refname(committish)
+        refname = self.branch_or_committish_ref(committish).name
         if ref:
             ref.set_target(
                 refname, f"Reset {name} to {committish} for worktree"
