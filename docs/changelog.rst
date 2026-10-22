@@ -31,6 +31,29 @@ ChangeLog
 `Unreleased`_
 -------------
 
+`0.1.2`_ - 2026-10-22
+---------------------
+Fixed
+.....
+- ``Git.refname_is_merged`` now resolves a target given as a short branch
+  name to that branch, and ``Project.branch_is_merged`` and
+  ``Project.branch_is_pushed`` look up each project branch as a branch. A tag
+  with the same name, such as a tag ``master``, was taken in its place. A
+  branch could then be reported merged when only the tag contained it, or
+  unmerged or unpushed when the project branch contained it.
+- ``Git.clone`` and ``Git.fetch_remote`` run the git CLI for an ssh url
+  without a password, so they use the ssh agent, ``~/.ssh/config`` and
+  ``known_hosts`` as plain git does, and a Host alias now resolves. An ssh
+  clone has the same branches, upstream config and remote ``HEAD`` as a
+  libgit2 clone. A failure is a one-line ``GitProjectError`` that carries
+  git's error. ssh sends keepalives, so a link that stops answering fails in
+  about a minute. ``GIT_SSH_COMMAND`` turns that off, and so do
+  ``GIT_SSH`` and ``core.sshCommand`` when ``ssh.id`` is unset. An ssh clone
+  or fetch through git gives up after six hours. A libgit2 clone or fetch
+  that reached an ssh server with no key to offer died with ``TypeError:
+  credential does not implement interface``, and now fails with a one-line
+  error.
+
 `0.1.1`_ - 2026-10-19
 ---------------------
 Added
@@ -268,7 +291,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.1...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.2...HEAD
+.. _0.1.2: https://github.com/greened/git-project/compare/v0.1.1...v0.1.2
 .. _0.1.1: https://github.com/greened/git-project/compare/v0.1.0...v0.1.1
 .. _0.1.0: https://github.com/greened/git-project/compare/v0.0.44...v0.1.0
 .. _0.0.44: https://github.com/greened/git-project/compare/v0.0.43...v0.0.44
