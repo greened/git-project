@@ -21,6 +21,7 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import itertools
 import os
 import shlex
 import shutil
@@ -33,6 +34,7 @@ import pygit2
 import pytest
 
 import git_project
+from git_project.test_support.common import create_commit
 
 
 def test_git_init(
@@ -703,6 +705,624 @@ def test_git_clone_without_ssh_id(
     assert not git.is_bare_repository()
 
 
+# A stand-in for ssh that runs the remote command locally.
+# GIT_SSH_VARIANT=simple makes git pass only the host and the command.
+FAKE_SSH = 'shift\nexec sh -c "$1"\n'
+
+
+def use_fake_ssh(directory, monkeypatch, body=FAKE_SSH):
+    ssh = Path(directory) / "fake-ssh"
+    ssh.write_text("#!/bin/sh\n" + body)
+    ssh.chmod(0o755)
+    monkeypatch.setenv("GIT_SSH_COMMAND", str(ssh))
+    monkeypatch.setenv("GIT_SSH_VARIANT", "simple")
+
+
+def make_source(path):
+    repo = pygit2.init_repository(str(path), bare=True)
+    coid = create_commit(repo, "refs/heads/master", [], "Hello")
+    create_commit(repo, "refs/heads/feature", [coid], "Feature")
+    repo.set_head("refs/heads/master")
+    return repo
+
+
+def clone_layout(path, branch="master"):
+    repo = pygit2.Repository(path)
+    config = repo.config
+    keys = [
+        "remote.origin.fetch",
+        f"branch.{branch}.remote",
+        f"branch.{branch}.merge",
+    ]
+    return {
+        "config": {
+            key: config[key] if key in config else None for key in keys
+        },
+        "refs": {
+            ref
+            for ref in repo.references
+            if ref.startswith(("refs/heads/", "refs/remotes/"))
+        },
+        "head": repo.references["HEAD"].target,
+        "origin_head": repo.references["refs/remotes/origin/HEAD"].target,
+    }
+
+
+def assert_exits(pid):
+    for _ in range(50):
+        try:
+            stat = Path(f"/proc/{pid}/stat").read_text()
+        except FileNotFoundError:
+            return
+        # A zombie has exited and waits only for its parent to reap it.
+        if stat.rpartition(")")[2].split()[0] == "Z":
+            return
+        time.sleep(0.1)
+    pytest.fail("ssh outlived git")
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("ssh://example.invalid/x.git", True),
+        ("git+ssh://example.invalid/x.git", True),
+        ("ssh+git://example.invalid/x.git", True),
+        ("SSH://example.invalid/x.git", True),
+        ("git@github.com:greened/x.git", True),
+        ("example.invalid:/x.git", True),
+        ("[::1]:x.git", True),
+        ("https://example.invalid/x.git", False),
+        ("file:///tmp/x.git", False),
+        ("/tmp/x.git", False),
+        ("x.git", False),
+        ("./a:b", False),
+        ("/tmp/a:b", False),
+        ("ext::ssh example.invalid %S x.git", False),
+        ("helper::ssh://example.invalid/x.git", False),
+    ],
+)
+def test_git_is_ssh_url(url, expected):
+    assert git_project.Git._is_ssh_url(url, "cannot use the url") == expected
+
+
+def test_git_clone_malformed_url(reset_directory, tmp_path_factory):
+    os.chdir(tmp_path_factory.mktemp("ssh-clone-workdir"))
+
+    with pytest.raises(
+        git_project.GitProjectError, match=r"^cannot clone: cannot parse"
+    ):
+        git_project.Git().clone("ssh://[::1")
+
+
+def test_git_fetch_remote_malformed_url(reset_directory, local_repository):
+    os.chdir(local_repository.path)
+    git = git_project.Git()
+    git.config.set_item("remote.origin", "url", "ssh://[::1")
+
+    with pytest.raises(
+        git_project.GitProjectError,
+        match=r"^cannot fetch from remote origin: cannot parse",
+    ):
+        git.fetch_remote("origin")
+
+
+@pytest.mark.parametrize("bare", [False, True])
+@pytest.mark.parametrize(
+    "form",
+    ["ssh://example.invalid{}", "example.invalid:{}"],
+    ids=["ssh-scheme", "scp"],
+)
+def test_git_clone_ssh_matches_libgit2(
+    reset_directory, tmp_path_factory, monkeypatch, form, bare
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    make_source(source)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    use_fake_ssh(workdir, monkeypatch)
+
+    libgit2_path = git_project.Git().clone(
+        f"file://{source}", path=str(workdir / "libgit2"), bare=bare
+    )
+    url = form.format(source)
+    git = git_project.Git()
+    # libgit2 cannot resolve example.invalid, so success means the CLI ran.
+    clone_path = git.clone(url, bare=bare)
+
+    assert clone_path == str(workdir / source.name)
+    assert git.is_bare_repository() == bare
+    assert git.get_remote_url("origin") == url
+    layout = clone_layout(clone_path)
+    assert layout == clone_layout(libgit2_path)
+    assert {
+        "refs/remotes/origin/master",
+        "refs/remotes/origin/feature",
+    } <= layout["refs"]
+    if not bare:
+        assert (Path(clone_path) / "Hello.txt").exists()
+        assert git.workarea_is_clean()
+
+
+@pytest.fixture
+def libgit2_config(tmp_path_factory):
+    # GIT_CONFIG_GLOBAL reaches only the CLI, so without this libgit2 would
+    # read the user's init.defaultBranch.
+    home = tmp_path_factory.mktemp("libgit2-config")
+    levels = [
+        pygit2.enums.ConfigLevel.GLOBAL,
+        pygit2.enums.ConfigLevel.XDG,
+        pygit2.enums.ConfigLevel.SYSTEM,
+    ]
+    saved = {level: pygit2.settings.search_path[level] for level in levels}
+    for level in levels:
+        pygit2.settings.search_path[level] = str(home)
+    yield home / ".gitconfig"
+    for level, path in saved.items():
+        pygit2.settings.search_path[level] = path
+
+
+@pytest.mark.parametrize("initial", [None, "main"])
+@pytest.mark.parametrize("branch", ["master", "feature"])
+def test_git_clone_ssh_detached_remote_head(
+    reset_directory,
+    tmp_path_factory,
+    monkeypatch,
+    libgit2_config,
+    branch,
+    initial,
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    source_repo = make_source(source)
+    # Another branch at the same commit, which sorts first.
+    oid = source_repo.references[f"refs/heads/{branch}"].target
+    source_repo.references.create("refs/heads/aaa", oid)
+    if initial:
+        # It sorts after aaa, so only its being the initial branch picks it.
+        source_repo.references.create(f"refs/heads/{initial}", oid)
+        libgit2_config.write_text(f"[init]\n\tdefaultBranch = {initial}\n")
+    # A detached HEAD sends no symref, so the clone guesses the branch.
+    source_repo.set_head(oid)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    use_fake_ssh(workdir, monkeypatch)
+
+    libgit2_path = git_project.Git().clone(
+        f"file://{source}", path=str(workdir / "libgit2")
+    )
+    clone_path = git_project.Git().clone(f"ssh://example.invalid{source}")
+
+    expected = initial or ("master" if branch == "master" else "aaa")
+    layout = clone_layout(clone_path, expected)
+    assert layout == clone_layout(libgit2_path, expected)
+    assert layout["head"] == f"refs/heads/{expected}"
+    assert pygit2.Repository(clone_path).head.target == oid
+
+
+def test_git_clone_ssh_head_on_no_branch(
+    reset_directory, tmp_path_factory, monkeypatch
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    source_repo = make_source(source)
+    parent = source_repo.references["refs/heads/feature"].target
+    loose = create_commit(source_repo, None, [parent], "Loose")
+    source_repo.set_head(loose)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    use_fake_ssh(workdir, monkeypatch)
+
+    clone_path = git_project.Git().clone(f"ssh://example.invalid{source}")
+
+    repo = pygit2.Repository(clone_path)
+    assert repo.head_is_detached
+    assert repo.head.target == loose
+    assert (Path(clone_path) / "Loose.txt").exists()
+    assert set(repo.branches.local) == set()
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_git_clone_ssh_missing_parents(
+    reset_directory, tmp_path_factory, monkeypatch, fails
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    make_source(source)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    (workdir / "a").mkdir()
+    body = FAKE_SSH
+    if fails:
+        marker = workdir / "connected"
+        body = (
+            f"if [ -e {marker} ]; then echo denied >&2; exit 255; fi\n"
+            f"touch {marker}\n{FAKE_SSH}"
+        )
+    use_fake_ssh(workdir, monkeypatch, body)
+    target = workdir / "a" / "b" / "c" / "x.git"
+    url = f"ssh://example.invalid{source}"
+
+    if not fails:
+        clone_path = git_project.Git().clone(url, path=str(target), bare=True)
+        assert clone_path == str(target)
+        assert "refs/heads/master" in pygit2.Repository(clone_path).references
+        return
+
+    with pytest.raises(git_project.GitProjectError, match="denied"):
+        git_project.Git().clone(url, path=str(target), bare=True)
+
+    # The clone made b and c, and a was there before.
+    assert list((workdir / "a").iterdir()) == []
+
+
+def test_git_clone_ssh_ignores_caller_repository(
+    reset_directory, tmp_path_factory, monkeypatch
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    make_source(source)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    caller = pygit2.init_repository(str(workdir))
+    # If git read this config, the rewrite would send it to a source that
+    # does not exist.
+    caller.config["url.ssh://example.invalid/nowhere.insteadOf"] = (
+        "ssh://example.invalid"
+    )
+    os.chdir(workdir)
+    monkeypatch.setenv("GIT_DIR", caller.path)
+    monkeypatch.setenv("GIT_WORK_TREE", str(workdir))
+    monkeypatch.setenv("GIT_OBJECT_DIRECTORY", str(workdir / "objects"))
+    use_fake_ssh(workdir, monkeypatch)
+
+    clone_path = git_project.Git().clone(
+        f"ssh://example.invalid{source}", path=str(workdir / "clone")
+    )
+
+    assert (Path(clone_path) / "Hello.txt").exists()
+    assert pygit2.Repository(clone_path).head.shorthand == "master"
+
+
+def test_git_clone_ssh_empty_remote(
+    reset_directory, tmp_path_factory, monkeypatch
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    pygit2.init_repository(str(source), bare=True)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    use_fake_ssh(workdir, monkeypatch)
+
+    git = git_project.Git()
+    clone_path = git.clone(f"ssh://example.invalid{source}", bare=True)
+
+    repo = pygit2.Repository(clone_path)
+    assert repo.head_is_unborn
+    assert repo.remotes["origin"].url == f"ssh://example.invalid{source}"
+
+
+@pytest.mark.parametrize("operation", ["clone", "fetch"])
+def test_git_ssh_transfer_failure(
+    reset_directory, local_repository, tmp_path_factory, monkeypatch, operation
+):
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    use_fake_ssh(
+        workdir,
+        monkeypatch,
+        "echo 'Permission denied (publickey).' >&2\nexit 255\n",
+    )
+    url = "example.invalid:/srv/x.git"
+    if operation == "clone":
+        os.chdir(workdir)
+        git = git_project.Git()
+        prefix = f"cannot clone {url}"
+    else:
+        os.chdir(local_repository.path)
+        git = git_project.Git()
+        git.config.set_item("remote.origin", "url", url)
+        prefix = "cannot fetch from remote origin"
+
+    with pytest.raises(git_project.GitProjectError) as info:
+        if operation == "clone":
+            git.clone(url)
+        else:
+            git.fetch_remote("origin")
+
+    message = str(info.value)
+    assert message.startswith(f"{prefix}: Permission denied")
+    assert "\n" not in message
+    assert not (workdir / "x.git").exists()
+
+
+@pytest.mark.parametrize(
+    "owner, name",
+    [
+        (pygit2, "init_repository"),
+        (pygit2.remotes.RemoteCollection, "create"),
+        (pygit2.branches.Branches, "create"),
+        (pygit2.Repository, "checkout_head"),
+    ],
+    ids=["init", "remote", "branch", "checkout"],
+)
+def test_git_clone_ssh_pygit2_failure(
+    reset_directory, tmp_path_factory, monkeypatch, owner, name
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    make_source(source)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    use_fake_ssh(workdir, monkeypatch)
+
+    def fail(*args, **kwargs):
+        raise pygit2.GitError("broken by the test")
+
+    monkeypatch.setattr(owner, name, fail)
+
+    with pytest.raises(
+        git_project.GitProjectError,
+        match=r"^cannot clone ssh://.*: broken by the test$",
+    ):
+        git_project.Git().clone(f"ssh://example.invalid{source}")
+
+    assert not (workdir / source.name).exists()
+
+
+@pytest.mark.parametrize("existed", [False, True])
+def test_git_clone_ssh_fetch_failure_removes_clone(
+    reset_directory, tmp_path_factory, monkeypatch, existed
+):
+    source = tmp_path_factory.mktemp("ssh-source")
+    make_source(source)
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    target = workdir / source.name
+    if existed:
+        target.mkdir()
+    # The ls-remote succeeds and the fetch after it fails.
+    marker = workdir / "connected"
+    use_fake_ssh(
+        workdir,
+        monkeypatch,
+        f"if [ -e {marker} ]; then echo denied >&2; exit 255; fi\n"
+        f"touch {marker}\n{FAKE_SSH}",
+    )
+
+    git = git_project.Git()
+    with pytest.raises(git_project.GitProjectError, match="denied"):
+        git.clone(f"ssh://example.invalid{source}")
+
+    if existed:
+        assert list(target.iterdir()) == []
+    else:
+        assert not target.exists()
+
+
+def test_git_clone_ssh_timeout(reset_directory, tmp_path_factory, monkeypatch):
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    pidfile = workdir / "ssh.pid"
+    use_fake_ssh(workdir, monkeypatch, f"echo $$ > {pidfile}\nexec sleep 30\n")
+    monkeypatch.setattr(git_project.Git, "REMOTE_TIMEOUT", 3)
+
+    git = git_project.Git()
+    with pytest.raises(git_project.GitProjectError, match="timed out after 3"):
+        git.clone("ssh://example.invalid/srv/x.git")
+
+    assert_exits(int(pidfile.read_text()))
+    assert not (workdir / "x.git").exists()
+
+
+def test_git_clone_ssh_interrupt(
+    reset_directory, tmp_path_factory, monkeypatch
+):
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    pidfile = workdir / "ssh.pid"
+    use_fake_ssh(workdir, monkeypatch, f"echo $$ > {pidfile}\nexec sleep 30\n")
+
+    class Interrupted(subprocess.Popen):
+        # Ctrl-C reaches only Python, because git runs in a new session.
+        def communicate(self, timeout=None):
+            for _ in range(50):
+                if pidfile.exists() and pidfile.read_text().strip():
+                    break
+                time.sleep(0.1)
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess, "Popen", Interrupted)
+
+    git = git_project.Git()
+    with pytest.raises(KeyboardInterrupt):
+        git.clone("ssh://example.invalid/srv/x.git")
+
+    assert_exits(int(pidfile.read_text()))
+    assert not (workdir / "x.git").exists()
+
+
+def record_git(monkeypatch):
+    """Stand in for git, and return the list each command is added to. Only
+    ls-remote succeeds.
+
+    """
+    commands = []
+
+    class Recorder:
+        def __init__(self, command, **kwargs):
+            commands.append(command)
+            self.returncode = 0 if "ls-remote" in command else 128
+
+        def communicate(self, timeout=None):
+            return "", "fatal: stopped by the test\n"
+
+    monkeypatch.setattr(subprocess, "Popen", Recorder)
+    return commands
+
+
+def config_options(command):
+    return [
+        value for flag, value in itertools.pairwise(command) if flag == "-c"
+    ]
+
+
+def ssh_command(command):
+    commands = [
+        value.partition("=")[2]
+        for value in config_options(command)
+        if value.startswith("core.sshCommand=")
+    ]
+    return [shlex.split(value) for value in commands]
+
+
+KEEPALIVE = ["-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4"]
+
+
+def assert_fetch_like_libgit2(command):
+    assert "maintenance.auto=false" in config_options(command)
+    assert "--no-recurse-submodules" in command
+
+
+def test_git_clone_ssh_passes_ssh_id(
+    reset_directory, tmp_path_factory, monkeypatch
+):
+    workdir = tmp_path_factory.mktemp("ssh-clone-workdir")
+    os.chdir(workdir)
+    # ssh.id replaces the user's ssh command.
+    monkeypatch.setenv("GIT_SSH", "my-ssh")
+    commands = record_git(monkeypatch)
+
+    url = "ssh://example.invalid/srv/x.git"
+    git = git_project.Git()
+    with pytest.raises(git_project.GitProjectError, match="stopped by"):
+        git.clone(url, "my key")
+
+    ls_remote, fetch = commands
+    for command in commands:
+        assert isinstance(command, list)
+        assert ssh_command(command) == [
+            ["ssh", "-i", str(Path.home() / ".ssh" / "my key"), *KEEPALIVE]
+        ]
+    assert ls_remote[ls_remote.index("--") + 1 :] == [
+        "origin",
+        "HEAD",
+        "refs/heads/*",
+    ]
+    assert_fetch_like_libgit2(fetch)
+
+
+@pytest.mark.parametrize(
+    "user_command",
+    [
+        None,
+        "GIT_SSH_COMMAND",
+        "GIT_SSH",
+        "core.sshCommand",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_CONFIG_COUNT",
+    ],
+)
+def test_git_fetch_remote_ssh_keepalive(
+    reset_directory,
+    local_repository,
+    monkeypatch,
+    libgit2_config,
+    user_command,
+):
+    os.chdir(local_repository.path)
+    for name in ("GIT_SSH_COMMAND", "GIT_SSH", "GIT_CONFIG_PARAMETERS"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("GIT_CONFIG_COUNT", raising=False)
+    git = git_project.Git()
+    git.config.set_item("remote.origin", "url", "example.invalid:/srv/x.git")
+    if user_command == "core.sshCommand":
+        git.config.set_item("core", "sshCommand", "my-ssh")
+    elif user_command == "GIT_CONFIG_PARAMETERS":
+        # The form a parent `git -c core.sshCommand=my-ssh` passes.
+        monkeypatch.setenv(user_command, "'core.sshcommand'='my-ssh'")
+    elif user_command == "GIT_CONFIG_COUNT":
+        monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+        monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.sshCommand")
+        monkeypatch.setenv("GIT_CONFIG_VALUE_0", "my-ssh")
+    elif user_command:
+        monkeypatch.setenv(user_command, "my-ssh")
+    commands = record_git(monkeypatch)
+
+    with pytest.raises(git_project.GitProjectError, match="stopped by"):
+        git.fetch_remote("origin")
+
+    (command,) = commands
+    if user_command:
+        assert ssh_command(command) == []
+    else:
+        assert ssh_command(command) == [["ssh", *KEEPALIVE]]
+    assert_fetch_like_libgit2(command)
+
+
+class Libgit2RanError(Exception):
+    pass
+
+
+def no_popen(*args, **kwargs):
+    pytest.fail("git ran")
+
+
+def stop_libgit2(*args, **kwargs):
+    raise Libgit2RanError
+
+
+PASSWORD_URL = "ssh://me:fixture-not-a-secret@example.invalid/srv/x.git"
+
+
+@pytest.mark.parametrize("operation", ["clone", "fetch"])
+def test_git_ssh_password_uses_libgit2(
+    reset_directory, local_repository, tmp_path_factory, monkeypatch, operation
+):
+    monkeypatch.setattr(subprocess, "Popen", no_popen)
+    if operation == "clone":
+        os.chdir(tmp_path_factory.mktemp("ssh-clone-workdir"))
+        git = git_project.Git()
+        monkeypatch.setattr(pygit2, "clone_repository", stop_libgit2)
+    else:
+        os.chdir(local_repository.path)
+        git = git_project.Git()
+        git.config.set_item("remote.origin", "url", PASSWORD_URL)
+        monkeypatch.setattr(pygit2.remotes.Remote, "fetch", stop_libgit2)
+
+    with pytest.raises(Libgit2RanError):
+        if operation == "clone":
+            git.clone(PASSWORD_URL)
+        else:
+            git.fetch_remote("origin")
+
+
+def test_git_fetch_remote_pushurl_only_uses_libgit2(
+    reset_directory, local_repository, monkeypatch
+):
+    os.chdir(local_repository.path)
+    git = git_project.Git()
+    git.config.set_item("remote.pushonly", "pushurl", "example.invalid:/x.git")
+    git.config.set_item(
+        "remote.pushonly", "fetch", "+refs/heads/*:refs/remotes/pushonly/*"
+    )
+    monkeypatch.setattr(subprocess, "Popen", no_popen)
+    monkeypatch.setattr(pygit2.remotes.Remote, "fetch", stop_libgit2)
+
+    with pytest.raises(Libgit2RanError):
+        git.fetch_remote("pushonly")
+
+
+def test_git_fetch_remote_ssh_uses_cli(
+    reset_directory, local_repository, remote_repository, monkeypatch
+):
+    os.chdir(local_repository.path)
+    use_fake_ssh(local_repository.path, monkeypatch)
+
+    git = git_project.Git()
+    url = f"ssh://example.invalid{remote_repository.path}"
+    git.config.set_item("remote.origin", "url", url)
+    git.set_remote_fetch_refspecs(
+        "origin", ["+refs/heads/*:refs/remotes/origin/changed/*"]
+    )
+
+    git.fetch_remote("origin")
+
+    refs = list(git.iterrefnames(["refs/remotes/origin/changed"]))
+    assert len(refs) > 0
+
+
 def test_git_ssh_credentials(reset_directory):
     ssh_key = pygit2.enums.CredentialType.SSH_KEY
     username = pygit2.enums.CredentialType.USERNAME
@@ -719,8 +1339,11 @@ def test_git_ssh_credentials(reset_directory):
     )
 
     # Without an ssh ID, a request for only an ssh key is an error.
-    with pytest.raises(git_project.GitProjectError, match=r"ssh\.id"):
+    with pytest.raises(git_project.GitProjectError, match=r"set ssh\.id\)$"):
         git_project.Git._ssh_credentials(None, "git", ssh_key)
+
+    with pytest.raises(git_project.GitProjectError, match=r"\(no password\)$"):
+        git_project.Git._ssh_credentials(None, "git", ssh_key, "no password")
 
     credentials = git_project.Git._ssh_credentials(
         None, "git", ssh_key | username
@@ -914,6 +1537,7 @@ def test_git_remote_git_passes_ssh_id(
         "ssh",
         "-i",
         str(Path.home() / ".ssh" / "my key"),
+        *KEEPALIVE,
     ]
 
 

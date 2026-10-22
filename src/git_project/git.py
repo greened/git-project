@@ -25,6 +25,7 @@ import contextlib
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import urllib.parse
@@ -52,26 +53,34 @@ class Git:
     config wraps the repository's git config as sections and items. Config
     objects read and write through it.
 
-    The remote operations authenticate with ssh when the repository's ssh.id
-    names a keypair, ~/.ssh/<id> and ~/.ssh/<id>.pub. The key must have no
-    passphrase, because git-project offers no passphrase and does not ask an
-    ssh agent. Without ssh.id no keypair is offered, and an ssh remote fails
-    with a one-line error.
+    remote_branch_exists and delete_remote_branch run the git CLI, as do
+    clone and fetch_remote on an ssh url without a password. So they read
+    ~/.ssh/config, check known_hosts and use the ssh agent. With ssh.id set
+    they pass ~/.ssh/<id> to ssh as well. That replaces any GIT_SSH or
+    core.sshCommand. A GIT_SSH_COMMAND in the environment takes
+    precedence, and then ssh.id has no effect. Keepalives make ssh give up
+    on a server that stops answering. A GIT_SSH_COMMAND, or without ssh.id
+    a GIT_SSH or core.sshCommand, replaces them.
 
-    remote_branch_exists and delete_remote_branch run the git CLI instead,
-    so they read ~/.ssh/config and use the ssh agent. With ssh.id set they
-    pass ~/.ssh/<id> to ssh as well. That replaces any core.sshCommand in
-    the git config. A GIT_SSH_COMMAND in the environment takes precedence,
-    and then ssh.id has no effect.
+    clone and fetch_remote on any other url use libgit2. fetch_remote sees
+    a remote's url after insteadOf rewriting, so only a clone url reaches
+    ssh through a rewrite. If such a url reaches an ssh server, as one with
+    a password does or a clone url rewritten to ssh, libgit2 authenticates with the keypair ssh.id
+    names, ~/.ssh/<id> and ~/.ssh/<id>.pub. The key must have no
+    passphrase, because git-project offers no passphrase and does not ask
+    an ssh agent. Without ssh.id no keypair is offered, and the operation
+    fails with a one-line error.
 
     """
 
     @staticmethod
-    def _ssh_credentials(ssh_id, username_from_url, allowed_types):
+    def _ssh_credentials(
+        ssh_id, username_from_url, allowed_types, advice="set ssh.id"
+    ):
         """Return the credentials to authenticate with, or None if we have none to
-        offer.  Name the keypair under ~/.ssh for the given ssh ID.  Raise a
-        GitProjectError when the remote asks for an ssh key and there is no ssh
-        ID.
+        offer. Name the keypair under ~/.ssh for the given ssh ID. Raise a
+        GitProjectError that ends with advice when the remote asks for an ssh
+        key and there is no ssh ID.
 
         """
         if ssh_id and allowed_types & pygit2.enums.CredentialType.SSH_KEY:
@@ -87,13 +96,12 @@ class Git:
             # pygit2 raises a TypeError on None and re-raises any
             # exception the callback raises.
             raise GitProjectError(
-                "cannot authenticate over ssh: no key to offer (a fetch uses"
-                " ssh.id; a clone needs an https url)"
+                f"cannot authenticate over ssh: no key to offer ({advice})"
             )
         return None
 
     class RemoteCallbacks(pygit2.RemoteCallbacks):
-        def __init__(self, ssh_id: str | None):
+        def __init__(self, ssh_id: str | None, advice="set ssh.id"):
             self.started_transfer = False
             self.transfer_done = False
 
@@ -105,10 +113,11 @@ class Git:
             )
 
             self.ssh_id = ssh_id
+            self.advice = advice
 
         def credentials(self, url, username_from_url, allowed_types):
             return Git._ssh_credentials(
-                self.ssh_id, username_from_url, allowed_types
+                self.ssh_id, username_from_url, allowed_types, self.advice
             )
 
         def sideband_progress(self, message):
@@ -704,7 +713,41 @@ class Git:
         return self._repo.remotes[remote].fetch_refspecs
 
     def fetch_remote(self, remote):
-        """Fetch all refspecs from the given remote."""
+        """Fetch all refspecs from the given remote. Raise GitProjectError if
+        the git CLI fails to fetch from an ssh url.
+
+        """
+        url = self.get_remote_url(remote)
+        failure = f"cannot fetch from remote {remote}"
+        # A remote with only a pushurl has no url.
+        if (
+            url is not None
+            and self._is_ssh_url(url, failure)
+            and urllib.parse.urlsplit(url).password is None
+        ):
+            command = [
+                "git",
+                *self._ssh_command_config(
+                    self.get_ssh_id(), self._repo.config
+                ),
+                # libgit2 neither runs maintenance nor fetches submodules.
+                "-c",
+                "maintenance.auto=false",
+                "--git-dir",
+                self._repo.path,
+                "fetch",
+                "--quiet",
+                "--no-recurse-submodules",
+                "--",
+                remote,
+            ]
+            self._run_transfer(
+                command,
+                failure,
+                self.TRANSFER_TIMEOUT,
+                cwd=self._repo.workdir or self._repo.path,
+            )
+            return
         callbacks = Git.RemoteCallbacks(self.get_ssh_id())
         self._repo.remotes[remote].fetch(callbacks=callbacks)
 
@@ -880,25 +923,208 @@ class Git:
         return result
 
     def clone(self, url, ssh_id=None, path=None, bare=False):
-        """Clone a repository at the given url, making a bare clone if specified.
-        Authenticate with the ssh ID if one is given.  A clone runs before there
+        """Clone a repository at the given url, making a bare clone if
+        specified. Use the ssh ID if one is given. A clone runs before there
         is a repository config to read one from, so the caller supplies it.
-        Without an ssh ID we offer no key, which suits a local or an anonymous
-        url.  An ssh url instead fails to authenticate.
+
+        An ssh url without a password clones through the git CLI. If that
+        fails, raise GitProjectError with git's error and leave no partial
+        clone. The result has the layout a libgit2 clone gives. Each remote
+        branch has a remote-tracking branch, and the remote's default branch
+        is the one local branch and tracks origin. Any other url clones
+        through libgit2, which offers no key without an ssh ID.
 
         """
+        use_cli = (
+            # Not the url itself, which may hold a password.
+            self._is_ssh_url(url, "cannot clone")
+            and urllib.parse.urlsplit(url).password is None
+        )
         parsed_url = urllib.parse.urlparse(url)
         url_path = Path(parsed_url.path).resolve()
         url_name = url_path.name
         target_path = path if path else str(Path.cwd() / url_name)
 
-        callbacks = Git.RemoteCallbacks(ssh_id)
-        self._repository = pygit2.clone_repository(
-            url, target_path, bare, callbacks=callbacks
-        )
+        if use_cli:
+            repository = self._clone_ssh(url, ssh_id, target_path, bare)
+        else:
+            # libgit2 reaches ssh here only through a password in the url or
+            # an insteadOf rewrite. The ssh url with no password goes through
+            # the git CLI, which needs no ssh ID.
+            callbacks = Git.RemoteCallbacks(
+                ssh_id,
+                "use the ssh url, without a password, rather than one"
+                " rewritten to ssh",
+            )
+            repository = pygit2.clone_repository(
+                url, target_path, bare, callbacks=callbacks
+            )
+        self._repository = repository
         self._config = self.Config(self, self._repository.config)
 
         return str(Path(target_path).resolve())
+
+    def _clone_ssh(self, url, ssh_id, target_path, bare):
+        """Clone url to target_path with the git CLI and return the opened
+        repository.
+
+        """
+        failure = f"cannot clone {url}"
+        target = Path(target_path)
+        # Directories this clone created, outermost first. Cleanup removes
+        # only these, never one that already existed.
+        created = []
+        reused = False
+
+        try:
+            try:
+                missing = []
+                parent = target.parent
+                while not parent.exists():
+                    missing.append(parent)
+                    parent = parent.parent
+                for directory in reversed(missing):
+                    with contextlib.suppress(FileExistsError):
+                        os.mkdir(directory)
+                        created.append(directory)
+                try:
+                    os.mkdir(target)
+                    created.append(target)
+                except FileExistsError:
+                    if not target.is_dir() or any(target.iterdir()):
+                        raise GitProjectError(
+                            f"{failure}: {target_path} exists and is not an"
+                            " empty directory"
+                        ) from None
+                    reused = True
+            except OSError as error:
+                raise GitProjectError(
+                    f"{failure}: cannot create {target_path}:"
+                    f" {error.strerror}"
+                ) from None
+
+            try:
+                # `git clone --bare` keeps no remote-tracking branches and no
+                # upstream. Build the layout libgit2 gives a clone instead.
+                repo = pygit2.init_repository(target_path, bare=bare)
+                repo.remotes.create("origin", url)
+                # --git-dir keeps the caller's repository and its config out
+                # of both calls.
+                git = [
+                    "git",
+                    *self._ssh_command_config(ssh_id, repo.config),
+                    # libgit2 neither runs maintenance nor fetches submodules.
+                    "-c",
+                    "maintenance.auto=false",
+                    "--git-dir",
+                    repo.path,
+                ]
+                cwd = repo.workdir or repo.path
+                result = self._run_transfer(
+                    [
+                        *git,
+                        "ls-remote",
+                        "--symref",
+                        "--",
+                        "origin",
+                        "HEAD",
+                        "refs/heads/*",
+                    ],
+                    failure,
+                    self.REMOTE_TIMEOUT,
+                    cwd=cwd,
+                )
+                head_branch = None
+                head_oid = None
+                heads = []
+                for line in result.stdout.splitlines():
+                    value, _, name = line.partition("\t")
+                    if value.startswith("ref: "):
+                        if name == "HEAD" and value.startswith(
+                            "ref: refs/heads/"
+                        ):
+                            head_branch = value[len("ref: refs/heads/") :]
+                    elif name == "HEAD":
+                        head_oid = value
+                    elif name.startswith("refs/heads/"):
+                        heads.append((name[len("refs/heads/") :], value))
+
+                refspecs = ["+refs/heads/*:refs/remotes/origin/*"]
+                if head_branch is None and head_oid:
+                    # When a server sends no symref, HEAD's branch is a
+                    # guess. libgit2 takes the first branch at HEAD's commit,
+                    # unless the initial branch is one of them.
+                    candidates = [
+                        name for name, oid in heads if oid == head_oid
+                    ]
+                    initial = "master"
+                    if "init.defaultBranch" in repo.config:
+                        initial = repo.config["init.defaultBranch"] or initial
+                    if initial in candidates:
+                        head_branch = initial
+                    elif candidates:
+                        head_branch = candidates[0]
+                    else:
+                        # The fetch must bring a commit no branch points at.
+                        refspecs.append("HEAD")
+                self._run_transfer(
+                    [
+                        *git,
+                        "fetch",
+                        "--quiet",
+                        "--no-recurse-submodules",
+                        "--",
+                        "origin",
+                        *refspecs,
+                    ],
+                    failure,
+                    self.TRANSFER_TIMEOUT,
+                    cwd=cwd,
+                )
+                tracking = f"refs/remotes/origin/{head_branch}"
+                if head_branch and tracking in repo.references:
+                    commit = repo.references[tracking].peel(pygit2.Commit)
+                    branch = repo.branches.local.create(head_branch, commit)
+                    branch.upstream = repo.branches.remote[
+                        f"origin/{head_branch}"
+                    ]
+                    repo.references.create(
+                        "refs/remotes/origin/HEAD", tracking, force=True
+                    )
+                    repo.set_head(branch.name)
+                elif head_oid:
+                    try:
+                        repo.set_head(pygit2.Oid(hex=head_oid))
+                    except (pygit2.GitError, KeyError, ValueError):
+                        # HEAD can move between the ls-remote and the fetch.
+                        raise GitProjectError(
+                            f"{failure}: cannot check out the remote HEAD"
+                            f" {head_oid}"
+                        ) from None
+                if not bare and not repo.head_is_unborn:
+                    repo.checkout_head()
+            except (pygit2.GitError, ValueError) as error:
+                raise GitProjectError(f"{failure}: {error}") from None
+        except BaseException:
+            # A failed cleanup must not replace the error that caused it.
+            if reused:
+                # It was empty before the clone began, so take what it holds
+                # now as the clone's.
+                with contextlib.suppress(OSError):
+                    for child in target.iterdir():
+                        if child.is_dir() and not child.is_symlink():
+                            shutil.rmtree(child, ignore_errors=True)
+                        else:
+                            with contextlib.suppress(OSError):
+                                child.unlink()
+            for directory in reversed(created):
+                if directory == target:
+                    shutil.rmtree(directory, ignore_errors=True)
+                else:
+                    with contextlib.suppress(OSError):
+                        os.rmdir(directory)
+            raise
+        return repo
 
     def checkout(self, committish):
         """Make the given committish active in the current worktree."""
@@ -953,55 +1179,190 @@ class Git:
 
     # A remote call through the git CLI gives up after this many seconds.
     REMOTE_TIMEOUT = 60
+    # A clone or fetch moves the history, so it gets longer. The ssh
+    # keepalive catches a dead link, so this only backs it up.
+    TRANSFER_TIMEOUT = 6 * 60 * 60
+    # ssh gives up on a server that stops answering these probes.
+    _SSH_KEEPALIVE = "-o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+
+    _REPOSITORY_ENV = (
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_CONFIG",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_IMPLICIT_WORK_TREE",
+        "GIT_GRAFT_FILE",
+        "GIT_INDEX_FILE",
+        "GIT_NO_REPLACE_OBJECTS",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_PREFIX",
+        "GIT_SHALLOW_FILE",
+        "GIT_COMMON_DIR",
+    )
+
+    @staticmethod
+    def _is_ssh_url(url, failure):
+        """Return whether git would reach url over ssh. Raise GitProjectError,
+        prefixed with failure, if url cannot be parsed.
+
+        """
+        # git hands <helper>::<address> to a remote helper.
+        if re.match(r"[A-Za-z][A-Za-z0-9+.-]*::", url):
+            return False
+        if "://" in url:
+            try:
+                scheme = urllib.parse.urlsplit(url).scheme.lower()
+            except ValueError:
+                # Not the url itself, which may hold a password.
+                raise GitProjectError(
+                    f"{failure}: cannot parse the url"
+                ) from None
+            return scheme in {"ssh", "git+ssh", "ssh+git"}
+        # git reads a slash before the first colon as a local path, so use
+        # the scp form, host:path.
+        host, colon, _ = url.partition(":")
+        return bool(colon) and bool(host) and "/" not in host
+
+    @classmethod
+    def _ssh_command_config(cls, ssh_id, config):
+        """Return the git options that make ssh send keepalives and offer the
+        key ssh_id names. Without an ssh ID, return none if the environment
+        or config, a pygit2 Config, already names an ssh command.
+
+        """
+        if ssh_id:
+            # git runs core.sshCommand through a shell.
+            key = shlex.quote(str(Path.home() / ".ssh" / ssh_id))
+            return ["-c", f"core.sshCommand=ssh -i {key} {cls._SSH_KEEPALIVE}"]
+        if (
+            "GIT_SSH_COMMAND" in os.environ
+            # core.sshCommand would take precedence over it.
+            or "GIT_SSH" in os.environ
+            or "core.sshCommand" in config
+            or cls._cli_config_names_ssh_command()
+        ):
+            return []
+        return ["-c", f"core.sshCommand=ssh {cls._SSH_KEEPALIVE}"]
+
+    @staticmethod
+    def _cli_config_names_ssh_command():
+        """Return whether a parent git's -c options name core.sshCommand."""
+        # pygit2 does not read these, so git config alone would miss them.
+        if (
+            "core.sshcommand"
+            in os.environ.get("GIT_CONFIG_PARAMETERS", "").lower()
+        ):
+            return True
+        count = os.environ.get("GIT_CONFIG_COUNT", "")
+        return count.isdigit() and any(
+            os.environ.get(f"GIT_CONFIG_KEY_{i}", "").lower()
+            == "core.sshcommand"
+            for i in range(int(count))
+        )
+
+    def _run_git_cli(self, command, timeout, cwd=None, capture_stderr=False):
+        """Run the git CLI command, an argument list, and return the
+        CompletedProcess. Raise OSError if git cannot run and
+        subprocess.TimeoutExpired once git and ssh are stopped after
+        timeout seconds.
+
+        """
+        # Fail rather than prompt for credentials. An empty GIT_ASKPASS
+        # stops git from running an askpass program, and a new session has
+        # no terminal for ssh to prompt on.
+        env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="")
+        env["SSH_ASKPASS_REQUIRE"] = "never"
+        # Each command names its repository with --git-dir. These variables
+        # would still point it at another one. The list is git's own from
+        # rev-parse --local-env-vars, less the -c config a parent git passes.
+        for name in self._REPOSITORY_ENV:
+            env.pop(name, None)
+        proc = subprocess.Popen(
+            command,
+            cwd=cwd,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            # Only a caller that reports git's error needs it.
+            stderr=subprocess.PIPE if capture_stderr else subprocess.DEVNULL,
+            text=True,
+            # A hook or the remote may write any bytes.
+            errors="replace",
+            start_new_session=True,
+        )
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except BaseException:
+            # Stop ssh as well as git. The new session keeps Ctrl-C from
+            # reaching them. TERM first lets git remove its temporary files.
+            try:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(proc.pid, signal.SIGTERM)
+                with contextlib.suppress(subprocess.TimeoutExpired):
+                    proc.wait(timeout=2)
+            finally:
+                # A second Ctrl-C during the wait must not leave them running.
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(proc.pid, signal.SIGKILL)
+                # A child that left the group may still hold a pipe, so
+                # don't read it to the end.
+                proc.stdout.close()
+                if proc.stderr is not None:
+                    proc.stderr.close()
+                proc.wait()
+            raise
+        return subprocess.CompletedProcess(command, proc.returncode, out, err)
+
+    def _run_transfer(self, command, failure, timeout, cwd=None):
+        """Run the git CLI command for a clone or fetch and return the
+        CompletedProcess. Raise GitProjectError, prefixed with failure, if
+        git cannot run, fails or runs past timeout seconds.
+
+        """
+        try:
+            result = self._run_git_cli(
+                command, timeout, cwd=cwd, capture_stderr=True
+            )
+        except subprocess.TimeoutExpired:
+            raise GitProjectError(
+                f"{failure}: timed out after {timeout} seconds"
+            ) from None
+        except OSError:
+            raise GitProjectError(f"{failure}: cannot run git") from None
+        if result.returncode != 0:
+            # One printable line of bounded length.
+            lines = (
+                "".join(c for c in line if c.isprintable()).strip()
+                for line in (result.stderr or "").splitlines()
+            )
+            detail = " ".join(line for line in lines if line)
+            if len(detail) > 500:
+                detail = detail[:497] + "..."
+            if not detail:
+                detail = f"git exited with code {result.returncode}"
+            raise GitProjectError(f"{failure}: {detail}")
+        return result
 
     def _run_remote_git(self, args):
         """Run the git CLI with args on this repository and return the
         CompletedProcess, or None if git could not run or timed out.
 
         """
-        command = ["git"]
-        ssh_id = self.get_ssh_id()
-        if ssh_id:
-            # git runs core.sshCommand through a shell.
-            key = shlex.quote(str(Path.home() / ".ssh" / ssh_id))
-            command += ["-c", f"core.sshCommand=ssh -i {key}"]
-        command += ["--git-dir", self._repo.path, *args]
-        # Fail rather than prompt for credentials. An empty GIT_ASKPASS
-        # stops git from running an askpass program, and a new session has
-        # no terminal for ssh to prompt on.
-        env = dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="")
-        env["SSH_ASKPASS_REQUIRE"] = "never"
+        command = [
+            "git",
+            *self._ssh_command_config(self.get_ssh_id(), self._repo.config),
+            "--git-dir",
+            self._repo.path,
+            *args,
+        ]
         # --git-dir makes the cwd the top of the work tree, and a pre-push
         # hook runs there.
         cwd = self._repo.workdir or self._repo.path
         try:
-            proc = subprocess.Popen(
-                command,
-                cwd=cwd,
-                env=env,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                # Nothing reads it, and it may hold the URL.
-                stderr=subprocess.DEVNULL,
-                text=True,
-                # A hook or the remote may write any bytes.
-                errors="replace",
-                start_new_session=True,
-            )
-        except OSError:
+            return self._run_git_cli(command, self.REMOTE_TIMEOUT, cwd=cwd)
+        except (OSError, subprocess.TimeoutExpired):
             return None
-        try:
-            out, _ = proc.communicate(timeout=self.REMOTE_TIMEOUT)
-        except subprocess.TimeoutExpired:
-            # Kill ssh as well as git.
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(proc.pid, signal.SIGKILL)
-            # A child that left the group may still hold the pipe, so do not
-            # read it to the end.
-            proc.stdout.close()
-            proc.wait()
-            return None
-        return subprocess.CompletedProcess(command, proc.returncode, out)
 
     def remote_branch_exists(self, branch_name, remote):
         """Return whether the given branch exists on the given remote. Raise
