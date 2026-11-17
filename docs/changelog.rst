@@ -31,6 +31,37 @@ ChangeLog
 `Unreleased`_
 -------------
 
+`0.1.3`_ - 2026-11-17
+---------------------
+Changed
+.......
+- Reading a key with several values as an attribute now gives a
+  ``tuple`` instead of a ``frozenset``. Code that compares the value
+  with a set, or uses set operations on it, needs ``set(...)``.
+
+Fixed
+.....
+- ``Git.checkout``, ``Git.add_worktree``, ``Git.update_symbolic_ref`` and
+  ``Git.committish_is_pushed`` now take a short name that is both a branch and
+  a tag as the branch, and so do ``Project.branch_is_merged``,
+  ``Project.branch_is_merged_remotely`` and ``Project.branch_is_pushed``. The
+  tag was taken in its place. A checkout or a symbolic ref could then land on
+  the tag, a worktree add failed, and a branch could be reported merged,
+  unmerged, pushed or unpushed by the tag's commit. The new
+  ``Git.branch_or_committish_ref`` does the lookup. An unmerged SHA given to
+  ``Project.branch_is_merged`` or ``Project.branch_is_pushed`` now gives False
+  instead of an ``AttributeError``.
+- A key with several values now gives them in the same order on every
+  run, the order git reads them from the config files. Before, the order
+  changed from one run to the next, so choices and ``--menu=json`` built
+  from such a key were reordered.
+- ``run_command_with_shell`` no longer dies on a Ctrl-C or a SIGTERM while
+  its command runs. It waits for the command and returns its status. A
+  SIGTERM is sent on to the command, and so is a SIGINT when git-project is
+  not in the terminal's foreground group. Before, git-project exited and left
+  the command running. When the command dies of a signal, git-project now
+  exits by the same signal, so a shell loop running it stops on a Ctrl-C.
+
 `0.1.2`_ - 2026-10-22
 ---------------------
 Fixed
@@ -291,7 +322,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.2...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.3...HEAD
+.. _0.1.3: https://github.com/greened/git-project/compare/v0.1.2...v0.1.3
 .. _0.1.2: https://github.com/greened/git-project/compare/v0.1.1...v0.1.2
 .. _0.1.1: https://github.com/greened/git-project/compare/v0.1.0...v0.1.1
 .. _0.1.0: https://github.com/greened/git-project/compare/v0.0.44...v0.1.0
