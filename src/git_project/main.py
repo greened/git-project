@@ -44,11 +44,15 @@ does the work, in this order:
 #. Check the config file again, and return what ``func`` returned.
 
 main exits with that value when it is an int, and with 0 otherwise. A
+negative value -N, from a command killed by signal N, makes main die of
+signal N, or exit with 128+N if the signal does not stop it. A
 GitProjectError prints its message and exits with a failure status. See
 git_project.plugin for what a plugin does at each step.
 
 """
 
+import os
+import signal
 import sys
 from pathlib import Path
 
@@ -101,6 +105,18 @@ def main_impl(args=None):
 def main(args=None):
     try:
         rc = main_impl(args)
+        if isinstance(rc, int) and rc < 0:
+            # A command killed by signal N gives -N. Die of the same signal,
+            # so that a shell running us in a loop sees the Ctrl-C and stops.
+            sys.stdout.flush()
+            sys.stderr.flush()
+            try:
+                signal.signal(-rc, signal.SIG_DFL)
+            except (OSError, ValueError):
+                pass
+            else:
+                os.kill(os.getpid(), -rc)
+            raise SystemExit(128 - rc)
         # Only an int return is an exit code; command funcs may return a
         # domain object (e.g. the created Worktree), which must not turn a
         # successful run into a non-zero process exit.

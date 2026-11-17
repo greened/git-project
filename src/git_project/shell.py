@@ -34,9 +34,12 @@ with shlex.split and run the result directly.
 """
 
 import io
+import os
 import shlex
+import signal
 import subprocess
 import tempfile
+import threading
 
 
 def run_command_with_shell(command, dry_run=False, show_command=False):
@@ -48,20 +51,66 @@ def run_command_with_shell(command, dry_run=False, show_command=False):
 
     show_command: Print the command before running it.
 
+    While the command runs, SIGINT and SIGTERM do not stop this process.
+    A SIGTERM is sent on to the command. A SIGINT is sent on only when
+    this process is not in the terminal's foreground group, since a
+    Ctrl-C there reaches the command directly. The command decides
+    whether to exit, and its status is returned. Off the main thread,
+    signals are left alone.
+
     """
 
     if dry_run or show_command:
         print(command)
 
     if not dry_run:
-        proc = subprocess.Popen(command, shell=True)
+        if threading.current_thread() is not threading.main_thread():
+            # Only the main thread can install a signal handler.
+            return subprocess.Popen(command, shell=True).wait()
 
-        # Wait for it to complete
-        proc.communicate()
+        proc = None
+        pending = []
 
-        return proc.returncode
+        def forward(signum, frame):
+            if proc is None:
+                pending.append(signum)
+            elif not (signum == signal.SIGINT and _terminal_signals_us()):
+                proc.send_signal(signum)
+
+        # A Python handler, not SIG_IGN, so that exec resets it to the
+        # default in the child.
+        old_int = signal.signal(signal.SIGINT, forward)
+        old_term = signal.signal(signal.SIGTERM, forward)
+        try:
+            proc = subprocess.Popen(command, shell=True)
+            # Popen has returned, so the handler can send directly. A signal
+            # queued while Popen ran is sent now, which can repeat a Ctrl-C the
+            # child already got if it came after the fork.
+            for signum in pending:
+                proc.send_signal(signum)
+            return proc.wait()
+        finally:
+            signal.signal(signal.SIGINT, old_int)
+            signal.signal(signal.SIGTERM, old_term)
 
     return 0
+
+
+def _terminal_signals_us():
+    """Return whether our process group is in the foreground of the
+    controlling terminal. A Ctrl-C there has reached the child already.
+
+    """
+    try:
+        fd = os.open("/dev/tty", os.O_RDONLY)
+    except OSError:
+        return False
+    try:
+        return os.tcgetpgrp(fd) == os.getpgrp()
+    except OSError:
+        return False
+    finally:
+        os.close(fd)
 
 
 def capture_command(

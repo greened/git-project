@@ -21,6 +21,9 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with git-project. If not, see <https://www.gnu.org/licenses/>.
 
+import signal
+import subprocess
+import sys
 
 import pytest
 
@@ -123,3 +126,38 @@ def test_main_project_defaults_before_initialize(
     git_project.main_impl(["look"])
 
     assert defaults_plugin.branch_at_initialize is True
+
+
+@pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM])
+def test_main_dies_of_the_signal_that_killed_the_command(signum):
+    # Stand in for a command func whose child was killed by signum.
+    code = (
+        "import git_project.main as m\n"
+        f"m.main_impl = lambda args=None: {-signum}\n"
+        "m.main()\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert b"Traceback" not in proc.stderr
+    assert proc.returncode == -signum
+
+
+def test_main_exits_128_plus_n_for_an_uncatchable_signal():
+    # SIGKILL cannot be reset to its default, so main exits 128+N instead.
+    code = (
+        "import git_project.main as m\n"
+        f"m.main_impl = lambda args=None: {-signal.SIGKILL}\n"
+        "m.main()\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert b"Traceback" not in proc.stderr
+    assert proc.returncode == 128 + signal.SIGKILL
