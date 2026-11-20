@@ -1475,6 +1475,29 @@ def test_git_checkout_tag_shadows_branch(reset_directory, local_repository):
     assert git.get_current_refname() == "refs/heads/unmerged"
 
 
+@pytest.mark.parametrize(
+    "spec",
+    [
+        lambda c: str(c.id),
+        lambda c: str(c.id)[:7],
+        lambda c: "unmerged~0",
+    ],
+    ids=["full", "short", "revision"],
+)
+def test_git_checkout_bare_sha(reset_directory, local_repository, spec):
+    os.chdir(local_repository.path)
+
+    unmerged = local_repository.revparse_single("refs/heads/unmerged")
+
+    git = git_project.Git()
+
+    git.checkout(spec(unmerged))
+
+    assert local_repository.head_is_detached
+    assert local_repository.head.target == unmerged.id
+    assert local_repository.status() == {}
+
+
 def test_git_update_symbolic_ref(reset_directory, local_repository):
     os.chdir(local_repository.path)
 
@@ -1510,6 +1533,30 @@ def test_git_update_symbolic_ref_tag_shadows_branch(
     git.update_symbolic_ref("HEAD", "unmerged")
 
     assert local_repository.references["HEAD"].target == "refs/heads/unmerged"
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        lambda c: str(c.id),
+        lambda c: str(c.id)[:7],
+        lambda c: "unmerged~0",
+    ],
+    ids=["full", "short", "revision"],
+)
+def test_git_update_symbolic_ref_bare_sha(
+    reset_directory, local_repository, spec
+):
+    os.chdir(local_repository.path)
+
+    unmerged = local_repository.revparse_single("refs/heads/unmerged")
+
+    git = git_project.Git()
+
+    with pytest.raises(git_project.GitProjectError):
+        git.update_symbolic_ref("HEAD", spec(unmerged))
+
+    assert local_repository.references["HEAD"].target == "refs/heads/master"
 
 
 def test_git_delete_branch(reset_directory, local_repository):

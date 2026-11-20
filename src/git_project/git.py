@@ -1152,9 +1152,16 @@ class Git:
         return repo
 
     def checkout(self, committish):
-        """Make the given committish active in the current worktree."""
-        refname = self.branch_or_committish_ref(committish).name
-        self._repo.checkout(refname)
+        """Make the given committish active in the current worktree. One with
+        no ref, such as a SHA, detaches HEAD at its commit, as git checkout
+        does."""
+        ref = self.branch_or_committish_ref(committish)
+        if ref is None:
+            commit = self.get_committish_commit(committish).peel(pygit2.Commit)
+            self._repo.checkout_tree(commit)
+            self._repo.set_head(commit.id)
+            return
+        self._repo.checkout(ref.name)
 
     def add_worktree(self, name, path, committish):
         """Add a worktree at the given path pointing to the given committish.  Name it
@@ -1186,14 +1193,19 @@ class Git:
 
     def update_symbolic_ref(self, name, committish):
         """Make symbolic ref name point to committish.  This is primarily used to update
-        HEAD.
+        HEAD. Raise GitProjectError for a committish with no ref, such as a
+        SHA, since a symbolic ref can only point at another ref.
 
         """
+        target = self.branch_or_committish_ref(committish)
+        if target is None:
+            raise GitProjectError(
+                f"Cannot point {name} at {committish}, which names no ref"
+            )
         ref = self._repo.references.get(name)
-        refname = self.branch_or_committish_ref(committish).name
         if ref:
             ref.set_target(
-                refname, f"Reset {name} to {committish} for worktree"
+                target.name, f"Reset {name} to {committish} for worktree"
             )
 
     def delete_branch(self, branch_name):
