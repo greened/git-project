@@ -28,6 +28,8 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
+import tempfile
 import urllib.parse
 from pathlib import Path
 
@@ -959,16 +961,37 @@ class Git:
         is the one local branch and tracks origin. Any other url clones
         through libgit2, which offers no key without an ssh ID.
 
+        The clone of an empty remote points HEAD at the branch the remote's
+        unborn HEAD names, as git clone does, and a clone with a work tree
+        makes that branch track origin. For a url that may carry a
+        credential, a remote that cannot be asked, or a remote HEAD that
+        names no branch, it warns and uses init.defaultBranch, else master. A url may carry a credential
+        if it has a password, or is not ssh and has a username or a query.
+
         """
-        use_cli = (
-            # Not the url itself, which may hold a password.
-            self._is_ssh_url(url, "cannot clone")
-            and urllib.parse.urlsplit(url).password is None
+        # Not the url itself, which may hold a password.
+        is_ssh = self._is_ssh_url(url, "cannot clone")
+        parts = urllib.parse.urlsplit(url)
+        has_password = parts.password is not None
+        use_cli = is_ssh and not has_password
+        # Over https a token can be the username, or a query can sign the
+        # url, and argv is readable by every local user.
+        may_hold_credential = has_password or (
+            not is_ssh and (parts.username is not None or bool(parts.query))
         )
         parsed_url = urllib.parse.urlparse(url)
         url_path = Path(parsed_url.path).resolve()
         url_name = url_path.name
         target_path = path if path else str(Path.cwd() / url_name)
+        # So that Ctrl-C while asking for the remote HEAD removes only what
+        # the clone made.
+        target = Path(target_path)
+        reused = target.exists()
+        created = []
+        directory = target
+        while not directory.exists():
+            created.insert(0, directory)
+            directory = directory.parent
 
         if use_cli:
             repository = self._clone_ssh(url, ssh_id, target_path, bare)
@@ -984,10 +1007,93 @@ class Git:
             repository = pygit2.clone_repository(
                 url, target_path, bare, callbacks=callbacks
             )
+        if not any(repository.references):
+            probe_url = None
+            if not may_hold_credential:
+                probe_url = url
+                if not is_ssh and "://" not in url:
+                    # The probe runs elsewhere, so a relative path must not
+                    # be read against its directory.
+                    probe_url = str(Path(url).absolute())
+            try:
+                self._set_empty_clone_head(repository, probe_url, ssh_id, bare)
+            except KeyboardInterrupt:
+                self._remove_clone(target, reused, created)
+                raise
         self._repository = repository
         self._config = self.Config(self, self._repository.config)
 
         return str(Path(target_path).resolve())
+
+    def _set_empty_clone_head(self, repository, url, ssh_id, bare):
+        """Point the HEAD of repository, an empty clone, at the branch the
+        remote's HEAD names, and unless bare make that branch track origin.
+        Ask the remote at url, unless url is None, and fall back with a
+        warning to init.defaultBranch, else master.
+
+        """
+        branch = None
+        reason = "the url may hold a credential"
+        if url is not None:
+            # Only `git clone` reads an unborn HEAD. ls-remote prints nothing
+            # for it, and neither fetch nor libgit2 sets it.
+            command = [
+                "git",
+                *self._ssh_command_config(ssh_id, repository.config),
+                "-c",
+                "maintenance.auto=false",
+                "clone",
+                "--bare",
+                "--quiet",
+                # The remote may have stopped being empty. A local clone
+                # ignores --depth without --no-local.
+                "--no-local",
+                "--depth=1",
+                "--no-tags",
+                "--",
+                url,
+            ]
+            # The clone has already succeeded, so a failed probe falls back
+            # rather than failing it.
+            try:
+                with tempfile.TemporaryDirectory() as scratch:
+                    probe = Path(scratch) / "probe.git"
+                    command.append(str(probe))
+                    self._run_transfer(
+                        command,
+                        "cannot read the remote HEAD",
+                        self.REMOTE_TIMEOUT,
+                        cwd=scratch,
+                    )
+                    head = pygit2.Repository(str(probe)).references["HEAD"]
+                    if head.type == pygit2.enums.ReferenceType.SYMBOLIC:
+                        branch = head.target
+                    else:
+                        reason = "the remote HEAD names no branch"
+            except GitProjectError as error:
+                reason = str(error)
+            except (pygit2.GitError, OSError) as error:
+                reason = f"cannot read the remote HEAD: {error}"
+        if branch is None:
+            initial = "master"
+            if "init.defaultBranch" in repository.config:
+                initial = repository.config["init.defaultBranch"] or initial
+            branch = self.branch_name_to_refname(initial)
+            # A url that may hold a credential is never probed, so git's
+            # error cannot show one.
+            print(
+                f"warning: {reason}, so HEAD names {initial}",
+                file=sys.stderr,
+            )
+        repository.set_head(branch)
+        # libgit2 makes its initial branch track origin, even in a bare clone.
+        local = pygit2.Config(str(Path(repository.path) / "config"))
+        for key in {e.name for e in local if e.name.startswith("branch.")}:
+            del local[key]
+        if not bare:
+            name = self.refname_to_branch_name(branch)
+            local[f"branch.{name}.remote"] = "origin"
+            local[f"branch.{name}.merge"] = branch
 
     def _clone_ssh(self, url, ssh_id, target_path, bare):
         """Clone url to target_path with the git CLI and return the opened
@@ -1131,25 +1237,35 @@ class Git:
             except (pygit2.GitError, ValueError) as error:
                 raise GitProjectError(f"{failure}: {error}") from None
         except BaseException:
-            # A failed cleanup must not replace the error that caused it.
-            if reused:
-                # It was empty before the clone began, so take what it holds
-                # now as the clone's.
-                with contextlib.suppress(OSError):
-                    for child in target.iterdir():
-                        if child.is_dir() and not child.is_symlink():
-                            shutil.rmtree(child, ignore_errors=True)
-                        else:
-                            with contextlib.suppress(OSError):
-                                child.unlink()
-            for directory in reversed(created):
-                if directory == target:
-                    shutil.rmtree(directory, ignore_errors=True)
-                else:
-                    with contextlib.suppress(OSError):
-                        os.rmdir(directory)
+            self._remove_clone(target, reused, created)
             raise
         return repo
+
+    @staticmethod
+    def _remove_clone(target, reused, created):
+        """Remove the clone at target, keeping every directory that existed
+        before it. reused says target was an empty directory before the
+        clone, and created lists the directories the clone made, outermost
+        first.
+
+        """
+        # A failed cleanup must not replace the error that caused it.
+        if reused:
+            # It was empty before the clone began, so take what it holds
+            # now as the clone's.
+            with contextlib.suppress(OSError):
+                for child in target.iterdir():
+                    if child.is_dir() and not child.is_symlink():
+                        shutil.rmtree(child, ignore_errors=True)
+                    else:
+                        with contextlib.suppress(OSError):
+                            child.unlink()
+        for directory in reversed(created):
+            if directory == target:
+                shutil.rmtree(directory, ignore_errors=True)
+            else:
+                with contextlib.suppress(OSError):
+                    os.rmdir(directory)
 
     def checkout(self, committish):
         """Make the given committish active in the current worktree. One with

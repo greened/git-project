@@ -1081,6 +1081,175 @@ def test_git_clone_ssh_empty_remote(
     assert repo.remotes["origin"].url == f"ssh://example.invalid{source}"
 
 
+@pytest.mark.parametrize("bare", [False, True])
+@pytest.mark.parametrize("transport", ["libgit2", "ssh"])
+def test_git_clone_empty_remote_head(
+    reset_directory,
+    tmp_path_factory,
+    monkeypatch,
+    libgit2_config,
+    transport,
+    bare,
+):
+    source = tmp_path_factory.mktemp("empty-source")
+    pygit2.init_repository(str(source), bare=True)
+    pygit2.Repository(str(source)).set_head("refs/heads/trunk")
+    # The remote's HEAD must win over the local initial branch.
+    libgit2_config.write_text("[init]\n\tdefaultBranch = main\n")
+    workdir = tmp_path_factory.mktemp("empty-clone-workdir")
+    os.chdir(workdir)
+    url = f"file://{source}"
+    if transport == "ssh":
+        # Only protocol v2 names an unborn HEAD, and git sends GIT_PROTOCOL
+        # only to the OpenSSH variant, so take its options.
+        use_fake_ssh(
+            workdir,
+            monkeypatch,
+            "while [ $# -gt 1 ]; do\n"
+            '  case "$1" in -o|-p) shift 2;; -*) shift;; *) break;; esac\n'
+            "done\n" + FAKE_SSH,
+        )
+        monkeypatch.setenv("GIT_SSH_VARIANT", "ssh")
+        url = f"ssh://example.invalid{source}"
+
+    clone_path = git_project.Git().clone(url, bare=bare)
+
+    repo = pygit2.Repository(clone_path)
+    assert repo.head_is_unborn
+    assert repo.references["HEAD"].target == "refs/heads/trunk"
+    assert repo.remotes["origin"].url == url
+    expected = {}
+    if not bare:
+        expected = {
+            "branch.trunk.remote": "origin",
+            "branch.trunk.merge": "refs/heads/trunk",
+        }
+    assert branch_config(clone_path) == expected
+
+
+def branch_config(path):
+    local = pygit2.Config(str(Path(pygit2.Repository(path).path) / "config"))
+    return {e.name: e.value for e in local if e.name.startswith("branch.")}
+
+
+def test_git_clone_empty_remote_head_relative_path(
+    reset_directory, tmp_path_factory, libgit2_config
+):
+    parent = tmp_path_factory.mktemp("empty-relative")
+    source = parent / "src.git"
+    pygit2.init_repository(str(source), bare=True)
+    pygit2.Repository(str(source)).set_head("refs/heads/trunk")
+    (parent / "work").mkdir()
+    os.chdir(parent / "work")
+
+    clone_path = git_project.Git().clone("../src.git")
+
+    head = pygit2.Repository(clone_path).references["HEAD"]
+    assert head.target == "refs/heads/trunk"
+
+
+@pytest.mark.parametrize("initial", [None, "main"])
+def test_git_clone_empty_remote_head_fallback(
+    reset_directory,
+    tmp_path_factory,
+    monkeypatch,
+    capsys,
+    libgit2_config,
+    initial,
+):
+    source = tmp_path_factory.mktemp("empty-source")
+    pygit2.init_repository(str(source), bare=True)
+    pygit2.Repository(str(source)).set_head("refs/heads/trunk")
+    if initial:
+        libgit2_config.write_text(f"[init]\n\tdefaultBranch = {initial}\n")
+    workdir = tmp_path_factory.mktemp("empty-clone-workdir")
+    os.chdir(workdir)
+
+    def fail(self, command, failure, timeout, cwd=None):
+        raise git_project.GitProjectError(f"{failure}: denied")
+
+    monkeypatch.setattr(git_project.Git, "_run_transfer", fail)
+
+    clone_path = git_project.Git().clone(f"file://{source}")
+
+    expected = initial or "master"
+    head = pygit2.Repository(clone_path).references["HEAD"]
+    assert head.target == f"refs/heads/{expected}"
+    assert capsys.readouterr().err == (
+        "warning: cannot read the remote HEAD: denied, so HEAD names"
+        f" {expected}\n"
+    )
+    assert branch_config(clone_path) == {
+        f"branch.{expected}.remote": "origin",
+        f"branch.{expected}.merge": f"refs/heads/{expected}",
+    }
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user:secret@example.invalid/x.git",
+        "https://token@example.invalid/x.git",
+        "https://example.invalid/x.git?sig=secret",
+    ],
+    ids=["password", "username", "query"],
+)
+def test_git_clone_empty_remote_credential_stays_off_argv(
+    reset_directory, tmp_path_factory, monkeypatch, capsys, libgit2_config, url
+):
+    workdir = tmp_path_factory.mktemp("empty-clone-workdir")
+    os.chdir(workdir)
+    libgit2_config.write_text("[init]\n\tdefaultBranch = main\n")
+    commands = []
+
+    def clone_repository(url, path, bare=False, callbacks=None):
+        repo = pygit2.init_repository(path, bare=bare)
+        repo.remotes.create("origin", url)
+        return repo
+
+    def run_git_cli(self, command, *args, **kwargs):
+        commands.append(command)
+        raise OSError("git must not run")
+
+    monkeypatch.setattr(pygit2, "clone_repository", clone_repository)
+    monkeypatch.setattr(git_project.Git, "_run_git_cli", run_git_cli)
+
+    clone_path = git_project.Git().clone(url, path="x.git")
+
+    assert commands == []
+    head = pygit2.Repository(clone_path).references["HEAD"]
+    assert head.target == "refs/heads/main"
+    assert capsys.readouterr().err == (
+        "warning: the url may hold a credential, so HEAD names main\n"
+    )
+
+
+@pytest.mark.parametrize("existed", [False, True])
+def test_git_clone_empty_remote_head_interrupt(
+    reset_directory, tmp_path_factory, monkeypatch, existed
+):
+    source = tmp_path_factory.mktemp("empty-source")
+    pygit2.init_repository(str(source), bare=True)
+    workdir = tmp_path_factory.mktemp("empty-clone-workdir")
+    os.chdir(workdir)
+    target = workdir / "new" / "x.git"
+    if existed:
+        target.mkdir(parents=True)
+
+    def interrupt(self, command, failure, timeout, cwd=None):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(git_project.Git, "_run_transfer", interrupt)
+
+    with pytest.raises(KeyboardInterrupt):
+        git_project.Git().clone(f"file://{source}", path=str(target))
+
+    if existed:
+        assert list(target.iterdir()) == []
+    else:
+        assert not (workdir / "new").exists()
+
+
 @pytest.mark.parametrize("operation", ["clone", "fetch"])
 def test_git_ssh_transfer_failure(
     reset_directory, local_repository, tmp_path_factory, monkeypatch, operation
