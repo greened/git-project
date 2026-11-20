@@ -384,6 +384,41 @@ def test_git_add_worktree_tag_shadows_branch(
     git.prune_worktree("test-wt")
 
 
+@pytest.mark.parametrize(
+    "spec",
+    [
+        lambda c: str(c.id),
+        lambda c: str(c.id)[:7],
+        lambda c: "unmerged~0",
+        lambda c: "v-tag",
+        lambda c: "origin/master",
+    ],
+    ids=["full", "short", "revision", "tag", "remote"],
+)
+def test_git_add_worktree_not_a_branch(
+    reset_directory, local_repository, tmp_path, spec
+):
+    os.chdir(local_repository.path)
+
+    unmerged = local_repository.revparse_single("refs/heads/unmerged")
+    local_repository.references.create("refs/tags/v-tag", unmerged.id)
+    branches = set(local_repository.branches.local)
+
+    git = git_project.Git()
+
+    parent_path = tmp_path / "wt-parent"
+    worktree_checkout_path = parent_path / "test-wt"
+
+    with pytest.raises(git_project.GitProjectError):
+        git.add_worktree(
+            "test-wt", str(worktree_checkout_path), spec(unmerged)
+        )
+
+    assert not os.path.lexists(parent_path)
+    assert local_repository.list_worktrees() == []
+    assert set(local_repository.branches.local) == branches
+
+
 def test_git_get_working_copy_root(reset_directory, local_repository):
     os.chdir(local_repository.path)
 

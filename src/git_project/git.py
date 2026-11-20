@@ -1281,10 +1281,17 @@ class Git:
 
     def add_worktree(self, name, path, committish):
         """Add a worktree at the given path pointing to the given committish.  Name it
-        with the given name to use as a handle.
+        with the given name to use as a handle. Raise GitProjectError, before
+        creating anything, for a committish that is not a local branch, such as
+        a SHA or a tag.
 
         """
         ref = self.branch_or_committish_ref(committish)
+        if ref is None or not ref.name.startswith("refs/heads/"):
+            raise GitProjectError(
+                f"Cannot add worktree {name} at {committish}, "
+                "which is not a local branch"
+            )
         parent_path = Path(path).parent
         if not parent_path.exists():
             os.makedirs(parent_path)
