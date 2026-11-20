@@ -31,6 +31,26 @@ ChangeLog
 `Unreleased`_
 -------------
 
+`0.1.4`_ - 2026-11-20
+---------------------
+Fixed
+.....
+- ``Git.add_worktree`` given a committish that is not a local branch, such as a
+  SHA or a tag, now raises ``GitProjectError`` before it creates anything. It
+  raised a ``TypeError`` or ``GitError`` before, after creating the worktree's
+  parent directory.
+- ``Git.checkout`` given a SHA, or any other committish with no ref, now
+  detaches HEAD at its commit as ``git checkout`` does.
+  ``Git.update_symbolic_ref`` given one now raises ``GitProjectError``, since a
+  symbolic ref can only point at another ref. Both raised an ``AttributeError``
+  before.
+- ``Git.clone`` of an empty repository now points HEAD at the branch the
+  remote's HEAD names, as ``git clone`` does, and without ``bare`` that
+  branch tracks origin. Before, the clone got ``master`` or the local
+  ``init.defaultBranch``. It still gets ``init.defaultBranch``, else
+  ``master``, with a warning, for a url that may carry a credential or a
+  remote that cannot be asked.
+
 `0.1.3`_ - 2026-11-17
 ---------------------
 Changed
@@ -322,7 +342,8 @@ Fixed
   ``git_project``. No declared environment supplied Sphinx either, so a
   ``docs`` environment with Sphinx is now declared.
 
-.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.3...HEAD
+.. _Unreleased: https://github.com/greened/git-project/compare/v0.1.4...HEAD
+.. _0.1.4: https://github.com/greened/git-project/compare/v0.1.3...v0.1.4
 .. _0.1.3: https://github.com/greened/git-project/compare/v0.1.2...v0.1.3
 .. _0.1.2: https://github.com/greened/git-project/compare/v0.1.1...v0.1.2
 .. _0.1.1: https://github.com/greened/git-project/compare/v0.1.0...v0.1.1
