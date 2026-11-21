@@ -1546,6 +1546,16 @@ class Git:
                 return True
         return False
 
+    def get_remote_refnames(self, remote):
+        """Return the refnames the given remote has, without HEAD. Raise
+        GitProjectError if the remote cannot be reached.
+
+        """
+        result = self._run_remote_git(["ls-remote", "--refs", "--", remote])
+        if result is None or result.returncode != 0:
+            raise GitProjectError(f"cannot reach remote {remote}")
+        return [line.partition("\t")[2] for line in result.stdout.splitlines()]
+
     def delete_remote_branch(self, branch_name, remote):
         """Remove the given local branch from the given remote. Raise
         GitProjectError if the remote cannot be reached or refuses.

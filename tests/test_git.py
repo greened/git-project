@@ -1808,6 +1808,22 @@ def test_git_remote_branch_exists(reset_directory, local_repository):
     assert not git.remote_branch_exists("unmerged", "origin")
 
 
+def test_git_get_remote_refnames(reset_directory, local_repository, tmp_path):
+    os.chdir(local_repository.path)
+    pygit2.init_repository(str(tmp_path / "empty.git"), bare=True)
+
+    git = git_project.Git()
+    git.config.set_item("remote.empty", "url", f"file://{tmp_path}/empty.git")
+    git.config.set_item("remote.gone", "url", f"file://{tmp_path}/gone.git")
+
+    refnames = git.get_remote_refnames("origin")
+    assert {"refs/heads/master", "refs/heads/pushed"} <= set(refnames)
+    assert "HEAD" not in refnames
+    assert git.get_remote_refnames("empty") == []
+    with pytest.raises(git_project.GitProjectError, match="cannot reach"):
+        git.get_remote_refnames("gone")
+
+
 def test_git_remote_branch_exists_timeout(
     reset_directory, local_repository, monkeypatch
 ):
